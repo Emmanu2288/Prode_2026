@@ -1,6 +1,6 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
-import passport from 'passport';
+import passport from './config/passport.js';
 import session from 'express-session';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
@@ -22,7 +22,8 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    sameSite: 'strict'
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production'
   }
 }));
 
