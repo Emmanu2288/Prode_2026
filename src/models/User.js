@@ -5,41 +5,48 @@ import bcrypt from "bcryptjs";
 const userSchema = new mongoose.Schema({
   first_name: {
     type: String,
-    required: true,
+    required: false,
   },
   last_name: {
     type: String,
-    required: true,
+    required: false,
   },
   email: {
     type: String,
-    required: true,
+    required: false,
     unique: true,
+    sparse: true, 
   },
   password: {
     type: String,
-    required: true,
+    required: false,
   },
   role: {
     type: String,
     enum: ["admin", "user"],
     default: "user",
   },
+   googleId: {
+    type: String,
+    unique: true,
+    sparse: true,
+  }
 });
   
-//Encriptar contraseña antes de guardar el usuario
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next(); // Si no cambió la contraseña, seguimos
-  const salt = await bcrypt.genSalt(10);           // Generar una "sal" aleatoria
-  this.password = await bcrypt.hash(this.password, salt); // Hashea la contraseña
+// Encriptar contraseña antes de guardar el usuario (solo si existe password)
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password") || !this.password) return next();
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
   next();
 });
 
 // Método para comparar la contraseña ingresada con la almacenada
-userSchema.methods.comparePassword = async function(password) {
+userSchema.methods.comparePassword = async function (password) {
+  if (!this.password) return false; // 👈 si el usuario es de Google, no hay password
   return await bcrypt.compare(password, this.password);
 };
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
 
 export default User;

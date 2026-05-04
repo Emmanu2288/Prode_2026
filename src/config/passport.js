@@ -1,5 +1,9 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 
@@ -22,6 +26,35 @@ passport.use(
         return done(null, user);
       } catch (err) {
         return done(err);
+      }
+    }
+  )
+);
+
+// Estrategia Google OAuth
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: "/api/auth/google/callback"
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        let user = await User.findOne({ googleId: profile.id });
+        if (!user) {
+          user = new User({
+            first_name: profile.name.givenName,
+            last_name: profile.name.familyName,
+            email: profile.emails[0].value,
+            googleId: profile.id,
+            role: "user"
+          });
+          await user.save();
+        }
+        return done(null, user);
+      } catch (err) {
+        return done(err, null);
       }
     }
   )

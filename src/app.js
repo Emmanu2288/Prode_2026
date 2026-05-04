@@ -1,11 +1,12 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import passport from './config/passport.js';
 import session from 'express-session';
-import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 
-dotenv.config();
 connectDB();
 
 const app = express();
