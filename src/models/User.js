@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 
 //Estuctura del usuario
 const userSchema = new mongoose.Schema({
-  firt_name: {
+  first_name: {
     type: String,
     required: true,
   },

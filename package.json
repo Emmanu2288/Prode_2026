@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "API de ejemplo con Express, Mongoose y Passport",
   "main": "src/app.js",
+  "type": "module",
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js"
@@ -10,8 +11,10 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.3",
     "express": "^4.18.2",
+    "express-session": "^1.19.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.5.0",
     "passport": "^0.6.0",

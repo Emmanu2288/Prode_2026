@@ -3,8 +3,10 @@ import cookieParser from 'cookie-parser';
 import passport from 'passport';
 import session from 'express-session';
 import dotenv from 'dotenv';
+import connectDB from './config/db.js';
 
 dotenv.config();
+connectDB();
 
 const app = express();
 
