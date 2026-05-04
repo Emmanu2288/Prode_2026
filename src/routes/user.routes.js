@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import User from '../models/User.js';
+import { verifyToken } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 
 // Ruta de prueba: listar todos los usuarios
-router.get('/', async (req, res) => {
+router.get('/', verifyToken, async (req, res) => {
   try {
     const users = await User.find();
     res.json(users);
