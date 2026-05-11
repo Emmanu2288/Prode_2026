@@ -6,12 +6,15 @@ import cookieParser from 'cookie-parser';
 import passport from './config/passport.js';
 import session from 'express-session';
 import connectDB from './config/db.js';
+import matchRoutes from './routes/match.routes.js';
 
 connectDB();
 
 const app = express();
 
+
 // Middleware basicos
+app.use('/api/matches', matchRoutes);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
