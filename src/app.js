@@ -6,20 +6,31 @@ import cookieParser from 'cookie-parser';
 import passport from './config/passport.js';
 import session from 'express-session';
 import connectDB from './config/db.js';
-import matchRoutes from './routes/match.routes.js';
 
+// Importamos inicializadores de rutas
+import { initMatchRoutes } from './routes/match.routes.js';
+import { initPredictionRoutes } from './routes/prediction.routes.js';
+import { initMvpRoutes } from './routes/mvpPrediction.routes.js';
+import { initAuthRoutes } from './routes/auth.routes.js';
+import { initUserRoutes } from './routes/user.routes.js';
+
+// Importamos cron jobs
+import { scheduleMatchStatusCheck } from './services/cron.service.js';
+
+// Inicializamos DB
 connectDB();
+
+// Inicializamos cron jobs
+scheduleMatchStatusCheck();
 
 const app = express();
 
-
-// Middleware basicos
-app.use('/api/matches', matchRoutes);
+// Middleware básicos
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
 
-// Configuracion de sesiones
+// Configuración de sesiones
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
@@ -31,16 +42,16 @@ app.use(session({
   }
 }));
 
-// Configuracion de Passport
+// Configuración de Passport
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Rutas
-import authRoutes from './routes/auth.routes.js';
-import userRoutes from './routes/user.routes.js';
-
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
+// Inicializamos rutas
+initMatchRoutes(app);
+initPredictionRoutes(app);
+initMvpRoutes(app);
+initAuthRoutes(app);
+initUserRoutes(app);
 
 // Servidor
 const PORT = process.env.PORT || 3000;

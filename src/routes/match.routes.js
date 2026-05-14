@@ -1,17 +1,10 @@
 import { Router } from "express";
-import { getMatchesFromAPI } from "../services/match.service.js";
+import { getMatches } from "../controllers/match.controller.js";
 
-const router = Router();
+export const initMatchRoutes = (app) => {
+  const router = Router();
 
-// Ejemplo: obtener partidos de la liga 1 (Champions League) temporada 2024
-router.get("/", async (req, res) => {
-  try {
-    const { leagueId, season } = req.query; // se pasan como parámetros
-    const matches = await getMatchesFromAPI(leagueId, season);
-    res.json(matches);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+  router.get("/", getMatches);
 
-export default router;
+  app.use("/api/matches", router);
+};

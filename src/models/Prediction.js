@@ -1,19 +1,19 @@
 import mongoose from "mongoose";
 
-const predictionSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+const { Schema } = mongoose;
 
-  // Pronóstico partido a partido
-  match: { type: mongoose.Schema.Types.ObjectId, ref: "Match" }, 
-  predictedScore: { type: String }, // ej: "3-1"
-
-  // Extras del Mundial
-  worldChampion: { type: String },      // ej: "Argentina"
-  bestPlayer: { type: String },         // ej: "Lionel Messi"
-  topScorer: { type: String },          // ej: "Mbappé"
-  bestGoalkeeper: { type: String },     // ej: "Thibaut Courtois"
-  revelationTeam: { type: String },     // ej: "Croacia"
-
+const predictionSchema = new Schema({
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  match: { type: Schema.Types.ObjectId, ref: "Match", index: true },
+  predictedScore: { type: String },
+  worldChampion: { type: String },
+  bestPlayer: { type: String },
+  topScorer: { type: String },
+  bestGoalkeeper: { type: String },
+  revelationTeam: { type: String }
 }, { timestamps: true });
+
+// Evita duplicados user+match
+predictionSchema.index({ user: 1, match: 1 }, { unique: true });
 
 export default mongoose.model("Prediction", predictionSchema);
