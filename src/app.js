@@ -13,6 +13,8 @@ import { initPredictionRoutes } from './routes/prediction.routes.js';
 import { initMvpRoutes } from './routes/mvpPrediction.routes.js';
 import { initAuthRoutes } from './routes/auth.routes.js';
 import { initUserRoutes } from './routes/user.routes.js';
+import { initGroupRoutes } from "./routes/group.routes.js";
+import { initInvitationRoutes } from "./routes/invitation.routes.js";
 
 // Importamos cron jobs
 import { scheduleMatchStatusCheck } from './services/cron.service.js';
@@ -52,6 +54,8 @@ initPredictionRoutes(app);
 initMvpRoutes(app);
 initAuthRoutes(app);
 initUserRoutes(app);
+initGroupRoutes(app);
+initInvitationRoutes(app);
 
 // Servidor
 const PORT = process.env.PORT || 3000;
