@@ -2,6 +2,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import express from 'express';
+import http from 'http';
+import { Server as IOServer } from 'socket.io';
 import cookieParser from 'cookie-parser';
 import passport from './config/passport.js';
 import session from 'express-session';
@@ -15,6 +17,7 @@ import { initAuthRoutes } from './routes/auth.routes.js';
 import { initUserRoutes } from './routes/user.routes.js';
 import { initGroupRoutes } from "./routes/group.routes.js";
 import { initInvitationRoutes } from "./routes/invitation.routes.js";
+import { initWebhookRoutes } from "./routes/webhook.routes.js";
 
 // Importamos cron jobs
 import { scheduleMatchStatusCheck } from './services/cron.service.js';
@@ -22,13 +25,17 @@ import { scheduleMatchStatusCheck } from './services/cron.service.js';
 // Inicializamos DB
 connectDB();
 
-// Inicializamos cron jobs
+// Inicializamos cron jobs (fallback ligero)
 scheduleMatchStatusCheck();
 
 const app = express();
 
-// Middleware básicos
-app.use(express.json());
+// Guardar raw body para verificación HMAC en webhooks
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
 
@@ -48,7 +55,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Inicializamos rutas
+// Inicializamos rutas normales
 initMatchRoutes(app);
 initPredictionRoutes(app);
 initMvpRoutes(app);
@@ -57,8 +64,30 @@ initUserRoutes(app);
 initGroupRoutes(app);
 initInvitationRoutes(app);
 
+// Inicializar rutas de webhook (usa req.rawBody para HMAC)
+initWebhookRoutes(app);
+
+// Crear servidor HTTP y Socket.IO
+const server = http.createServer(app);
+const io = new IOServer(server, {
+  cors: { origin: process.env.FRONTEND_URL || "http://localhost:3000", methods: ["GET","POST"] }
+});
+
+// Hacer io accesible globalmente para los procesadores
+globalThis.io = io;
+
+io.on("connection", (socket) => {
+  console.log("Socket conectado:", socket.id);
+  socket.on("join_match", ({ matchId }) => {
+    if (matchId) socket.join(`match_${matchId}`);
+  });
+  socket.on("leave_match", ({ matchId }) => {
+    if (matchId) socket.leave(`match_${matchId}`);
+  });
+});
+
 // Servidor
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
