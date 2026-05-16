@@ -2,84 +2,132 @@ import cron from "node-cron";
 import Prediction from "../models/Prediction.js";
 import User from "../models/User.js";
 import Membership from "../models/Membership.js";
+import GroupPoints from "../models/GroupPoints.js";
 import ProcessedFixture from "../models/ProcessedFixture.js";
+import Correction from "../models/Correction.js";
 import { getWorldCup2026Matches } from "./match.service.js";
-import { calculatePointsFinal, applyFinalPointsToPrediction } from "./points.service.js";
+import { calculatePointsFinal } from "./points.service.js";
+import { captureException, slackAlert } from "../utils/alerts.js";
 
-/**
- * Asigna predicción 0-0 si no existe para user+match
- */
-const assignDefaultPrediction = async (matchId, userId) => {
+const CORRECTION_ALERT_THRESHOLD = Number(process.env.CORRECTION_ALERT_THRESHOLD || 10);
+const MAX_PARALLEL_USERS = Number(process.env.MAX_PARALLEL_USERS || 50);
+
+const applyCorrection = async ({ matchId, predId, userId, before, after, diff, reason }) => {
   try {
-    const existing = await Prediction.findOne({ user: userId, match: matchId });
-    if (!existing) {
-      await Prediction.create({
-        user: userId,
-        match: matchId,
-        predictedScore: "0-0",
-        points: 0,
-        livePoints: 0
-      });
-      console.log(`✅ 0-0 asignado a ${userId} para partido ${matchId}`);
+    if (predId) {
+      await Prediction.findByIdAndUpdate(predId, { $set: { points: after } });
     }
-  } catch (err) {
-    if (err && err.code === 11000) return;
-    console.error("assignDefaultPrediction error:", err);
-  }
-};
 
-/**
- * Procesa una lista de usuarios en batches
- */
-const processUsersInBatches = async (matchId, userIds, batchSize = 100) => {
-  for (let i = 0; i < userIds.length; i += batchSize) {
-    const batch = userIds.slice(i, i + batchSize);
-    await Promise.all(batch.map((u) => assignDefaultPrediction(matchId, u)));
-  }
-};
-
-/**
- * Job A: asignar predicciones por defecto (status NS)
- * Frecuencia: cada 30 minutos (suficiente para mantener predicciones antes del inicio)
- */
-export const scheduleAssignDefaults = () => {
-  cron.schedule("*/30 * * * *", async () => {
-    console.log("⏰ Cron assign defaults: buscando partidos NS...");
-
-    try {
-      const from = new Date().toISOString().slice(0, 10);
-      const toDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
-      const to = toDate.toISOString().slice(0, 10);
-
-      const fixtures = await getWorldCup2026Matches({ params: { status: "NS", from, to } });
-      const list = Array.isArray(fixtures) ? fixtures : [];
-
-      for (const fixture of list) {
-        const matchId = String(fixture.fixture?.id ?? fixture.id);
-        const already = await ProcessedFixture.findOne({ matchId, type: "assigned_default" });
-        if (already) continue;
-
-        const usersCursor = User.find().select("_id").lean().cursor();
-        const allUserIds = [];
-        for await (const u of usersCursor) allUserIds.push(u._id.toString());
-        await processUsersInBatches(matchId, allUserIds);
-
-        await ProcessedFixture.create({ matchId, type: "assigned_default" });
-        console.log(`🟢 Assigned defaults for match ${matchId}`);
+    if (userId && diff !== 0) {
+      const memberships = await Membership.find({ user: userId }).lean();
+      for (const mem of memberships) {
+        await GroupPoints.findOneAndUpdate(
+          { group: mem.group, user: userId },
+          { $inc: { points: diff }, $set: { lastUpdated: new Date() } },
+          { upsert: true }
+        );
       }
-    } catch (err) {
-      console.error("assign defaults cron error:", err);
+      await User.findByIdAndUpdate(userId, { $inc: { totalPoints: diff } });
     }
-  });
+
+    await Correction.create({
+      matchId,
+      predictionId: predId,
+      userId,
+      field: "points",
+      before,
+      after,
+      diff,
+      reason,
+      processedBy: "reconciler"
+    });
+  } catch (err) {
+    console.error("applyCorrection error:", err);
+    captureException(err);
+    try {
+      await Correction.create({
+        matchId,
+        predictionId: predId,
+        userId,
+        field: "points",
+        before,
+        after,
+        diff,
+        reason: `reconciler_error: ${err.message}`,
+        processedBy: "reconciler"
+      });
+    } catch (e) {
+      console.error("Failed to log failed correction:", e);
+      captureException(e);
+    }
+  }
 };
 
-/**
- * Job B: procesar partidos finalizados (status FT)
- * Frecuencia: cada 1 minuto para máxima reactividad post-FT 
- */
-export const scheduleFinalizeMatches = () => {
+export const reconcileMatch = async (fixture) => {
+  const matchId = String(fixture.fixture?.id ?? fixture.id);
+  const finalGoals = fixture.goals ?? fixture.score ?? { home: 0, away: 0 };
+  const finalMvp = fixture.mvp ?? null;
+
+  const preds = await Prediction.find({ match: matchId }).lean();
+  if (!preds || preds.length === 0) {
+    await ProcessedFixture.create({ matchId, type: "scored" }).catch(() => {});
+    return { matchId, checked: 0, corrections: 0 };
+  }
+
+  let corrections = 0;
+
+  for (let i = 0; i < preds.length; i += MAX_PARALLEL_USERS) {
+    const batch = preds.slice(i, i + MAX_PARALLEL_USERS);
+    await Promise.all(batch.map(async (pred) => {
+      try {
+        const expectedPoints = calculatePointsFinal(pred, finalGoals, finalMvp);
+        const currentPoints = Number(pred.points ?? 0);
+        if (currentPoints === expectedPoints) return;
+
+        const diff = expectedPoints - currentPoints;
+
+        await applyCorrection({
+          matchId,
+          predId: pred._id,
+          userId: pred.user,
+          before: currentPoints,
+          after: expectedPoints,
+          diff,
+          reason: "reconciler_api_vs_db"
+        });
+
+        corrections += 1;
+      } catch (err) {
+        console.error(`Error reconciling prediction ${pred._id} for match ${matchId}:`, err);
+        captureException(err);
+      }
+    }));
+  }
+
+  if (globalThis.io) {
+    try {
+      globalThis.io.to(`match_${matchId}`).emit("match_reconciled", { matchId, finalGoals, corrections });
+    } catch (e) {
+      console.warn("Socket emit failed for match_reconciled:", e?.message || e);
+    }
+  }
+
+  try {
+    await ProcessedFixture.create({ matchId, type: "scored" });
+  } catch (e) {}
+
+  if (corrections > CORRECTION_ALERT_THRESHOLD) {
+    const msg = `⚠️ High corrections for match ${matchId}: ${corrections}. Check Correction collection.`;
+    console.warn(msg);
+    slackAlert(msg).catch(() => {});
+  }
+
+  return { matchId, checked: preds.length, corrections };
+};
+
+export const scheduleFinalizeMatchesReconciler = () => {
   cron.schedule("*/1 * * * *", async () => {
-    console.log("⏰ Cron finalize matches: buscando partidos FT...");
+    console.log("⏰ Cron reconciler: buscando partidos FT para reconciliar...");
 
     try {
       const from = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -88,38 +136,50 @@ export const scheduleFinalizeMatches = () => {
       const fixtures = await getWorldCup2026Matches({ params: { status: "FT", from, to } });
       const list = Array.isArray(fixtures) ? fixtures : [];
 
+      if (!list.length) return;
+
+      let totalChecked = 0;
+      let totalCorrections = 0;
+      const problematicMatches = [];
+
       for (const fixture of list) {
         const matchId = String(fixture.fixture?.id ?? fixture.id);
-        const already = await ProcessedFixture.findOne({ matchId, type: "scored" });
-        if (already) continue;
+        try {
+          const already = await ProcessedFixture.findOne({ matchId, type: "scored" });
+          if (already) {
+            const anyPredWithPoints = await Prediction.exists({ match: matchId, points: { $exists: true, $ne: null } });
+            if (!anyPredWithPoints) {
+              const res = await reconcileMatch(fixture);
+              totalChecked += res.checked;
+              totalCorrections += res.corrections;
+              if (res.corrections > CORRECTION_ALERT_THRESHOLD) problematicMatches.push(res.matchId);
+            }
+            continue;
+          }
 
-        const finalGoals = fixture.goals ?? fixture.score ?? { home: 0, away: 0 };
-        const finalMvp = fixture.mvp ?? null;
-
-        const preds = await Prediction.find({ match: matchId });
-        for (const pred of preds) {
-          const points = calculatePointsFinal(pred, finalGoals, finalMvp);
-          await applyFinalPointsToPrediction(pred, points);
+          const res = await reconcileMatch(fixture);
+          totalChecked += res.checked;
+          totalCorrections += res.corrections;
+          if (res.corrections > CORRECTION_ALERT_THRESHOLD) problematicMatches.push(res.matchId);
+        } catch (err) {
+          console.error(`Error processing fixture ${matchId} in reconciler:`, err);
+          captureException(err);
         }
+      }
 
-        if (globalThis.io) {
-          globalThis.io.to(`match_${matchId}`).emit("match_finished", { matchId, finalGoals });
-        }
-
-        await ProcessedFixture.create({ matchId, type: "scored" });
-        console.log(`🏁 Finalized and scored match ${matchId}`);
+      console.log(`✅ Reconciler run complete. Matches checked: ${totalChecked}. Corrections applied: ${totalCorrections}.`);
+      if (problematicMatches.length) {
+        const msg = `⚠️ Matches with high correction count: ${problematicMatches.join(", ")}`;
+        console.warn(msg);
+        slackAlert(msg).catch(() => {});
       }
     } catch (err) {
-      console.error("finalize matches cron error:", err);
+      console.error("Reconciler cron error:", err);
+      captureException(err);
     }
   });
 };
 
-/**
- * scheduleMatchStatusCheck
- * Inicia los jobs de fallback. Con webhooks activos, la mayor parte del trabajo en vivo vendrá por el webhook.
- */
 export const scheduleMatchStatusCheck = () => {
-  scheduleAssignDefaults();
-  scheduleFinalizeMatches();
+  scheduleFinalizeMatchesReconciler();
 };
