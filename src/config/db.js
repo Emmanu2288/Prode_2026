@@ -70,6 +70,7 @@ const connectDB = async () => {
   process.on("SIGINT", gracefulExit);
   process.on("SIGTERM", gracefulExit);
 };
+console.log("MONGO URI:", process.env.MONGO_URI);
 
 export default connectDB;
 export { mongoose };

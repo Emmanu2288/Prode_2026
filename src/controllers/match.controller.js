@@ -1,10 +1,10 @@
-import { getMatchesFromAPI } from "../services/match.service.js";
+import { getWorldCup2026Matches } from "../services/match.service.js";
 
 // Controlador para obtener partidos desde la API externa
 export const getMatches = async (req, res) => {
   try {
     const { leagueId, season } = req.query;
-    const matches = await getMatchesFromAPI(leagueId, season);
+    const matches = await getWorldCup2026Matches(leagueId, season);
     return res.json(matches);
   } catch (err) {
     return res.status(500).json({ error: err.message });

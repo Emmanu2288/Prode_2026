@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
-import { initMonitoring } from "./src/utils/alerts.js";
+import { initMonitoring, captureException, slackAlert } from "./utils/alerts.js";
 initMonitoring();
 
 import express from 'express';
@@ -97,6 +97,13 @@ const start = async () => {
     });
   } catch (err) {
     console.error("Error arrancando la aplicación:", err);
+    try {
+      captureException(err);
+      const shortMsg = `Startup failed: ${err.message?.slice(0, 200) || "unknown error"}`;
+      slackAlert(shortMsg).catch(() => {});
+    } catch (e) {
+      console.error("Error reporting startup failure:", e);
+    }
     process.exit(1);
   }
 };

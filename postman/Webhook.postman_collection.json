@@ -1,0 +1,78 @@
+{
+  "info": {
+    "_postman_id": "b4878f58-0d97-498c-80ae-d1a19e8a5dbe",
+    "name": "Webhook",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "52026757",
+    "_collection_link": "https://go.postman.co/collection/52026757-b4878f58-0d97-498c-80ae-d1a19e8a5dbe?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "pruebas",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const secret = pm.environment.get(\"WEBHOOK_SECRET\");\r",
+              "const bodyRaw = (pm.request && pm.request.body && pm.request.body.raw)\r",
+              "  || (pm.request && pm.request.toJSON && pm.request.toJSON().body && pm.request.toJSON().body.raw)\r",
+              "  || null;\r",
+              "\r",
+              "if (!secret) throw new Error(\"WEBHOOK_SECRET no está definida en el environment\");\r",
+              "if (!bodyRaw) throw new Error(\"El body no está en raw → JSON\");\r",
+              "\r",
+              "const sig = CryptoJS.HmacSHA256(bodyRaw, secret).toString(CryptoJS.enc.Hex);\r",
+              "pm.environment.set(\"WEBHOOK_SIG\", sig);\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "x-signature",
+            "value": "{{WEBHOOK_SIG}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"fixture\":{\"id\":12345},\"status\":\"FT\",\"goals\":{\"home\":2,\"away\":1}}\r\n",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/webhooks/football",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "webhooks",
+            "football"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
