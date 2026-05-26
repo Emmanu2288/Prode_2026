@@ -68,7 +68,8 @@ export const reconcileMatch = async (fixture) => {
   const finalGoals = fixture.goals ?? fixture.score ?? { home: 0, away: 0 };
   const finalMvp = fixture.mvp ?? null;
 
-  const preds = await Prediction.find({ match: matchId }).lean();
+  // Buscar predicciones por matchId (string) en lugar de match (ObjectId)
+  const preds = await Prediction.find({ matchId }).lean();
   if (!preds || preds.length === 0) {
     await ProcessedFixture.create({ matchId, type: "scored" }).catch(() => {});
     return { matchId, checked: 0, corrections: 0 };
@@ -147,7 +148,8 @@ export const scheduleFinalizeMatchesReconciler = () => {
         try {
           const already = await ProcessedFixture.findOne({ matchId, type: "scored" });
           if (already) {
-            const anyPredWithPoints = await Prediction.exists({ match: matchId, points: { $exists: true, $ne: null } });
+            // Comprobar existencia de predicciones por matchId (string)
+            const anyPredWithPoints = await Prediction.exists({ matchId, points: { $exists: true, $ne: null } });
             if (!anyPredWithPoints) {
               const res = await reconcileMatch(fixture);
               totalChecked += res.checked;

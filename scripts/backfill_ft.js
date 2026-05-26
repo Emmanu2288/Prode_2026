@@ -17,11 +17,24 @@ const runBackfill = async () => {
     initMonitoring();
     await connectDB();
 
-    const fromDate = new Date(Date.now() - FROM_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0,10);
-    const toDate = new Date().toISOString().slice(0,10);
+    // Variables configurables por entorno
+    const WORLD_CUP_LEAGUE_ID = process.env.WORLD_CUP_LEAGUE_ID ? Number(process.env.WORLD_CUP_LEAGUE_ID) : 1;
+    const WORLD_CUP_SEASON = process.env.API_SEASON || 2022;
+    const BACKFILL_START = process.env.BACKFILL_START || null;
+    const BACKFILL_END = process.env.BACKFILL_END || null;
 
-    console.log(`Backfill: consultando fixtures FT desde ${fromDate} hasta ${toDate}...`);
-    const fixtures = await getWorldCup2026Matches({ params: { status: "FT", from: fromDate, to: toDate } });
+    // Fecha desde/hasta: si BACKFILL_START/END están definidas, úsalas; si no, usa FROM_DAYS
+    const fromDate = BACKFILL_START || new Date(Date.now() - FROM_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0,10);
+    const toDate = BACKFILL_END || new Date().toISOString().slice(0,10);
+
+    console.log(`Backfill: consultando fixtures FT para league=${WORLD_CUP_LEAGUE_ID} season=${WORLD_CUP_SEASON} desde ${fromDate} hasta ${toDate}...`);
+
+    const fixtures = await getWorldCup2026Matches({
+      leagueId: WORLD_CUP_LEAGUE_ID,
+      season: WORLD_CUP_SEASON,
+      params: { status: "FT", from: fromDate, to: toDate }
+    });
+
     const list = Array.isArray(fixtures) ? fixtures : [];
 
     console.log(`Backfill: encontrados ${list.length} fixtures FT.`);
@@ -42,7 +55,6 @@ const runBackfill = async () => {
       console.log(`Backfill: reconciliando match ${matchId}...`);
       try {
         const res = await reconcileMatch(fixture);
-        // Si reconcileMatch devuelve un objeto con info, loguealo
         console.log(`Backfill: match ${matchId} reconciled. result:`, res && typeof res === "object" ? JSON.stringify(res) : String(res));
       } catch (err) {
         console.error(`Backfill: error reconciling ${matchId}:`, err);
@@ -57,7 +69,6 @@ const runBackfill = async () => {
     process.exitCode = 1;
   } finally {
     try {
-      // Cerrar conexión mongoose de forma ordenada
       if (mongoose && mongoose.connection && mongoose.connection.readyState) {
         await mongoose.connection.close();
         console.log("MongoDB connection closed.");
