@@ -1,4 +1,3 @@
-// src/services/points.service.js
 import GroupPoints from "../models/GroupPoints.js";
 import Membership from "../models/Membership.js";
 import User from "../models/User.js";

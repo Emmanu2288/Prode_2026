@@ -1,0 +1,79 @@
+{
+  "info": {
+    "_postman_id": "a12e506c-1c68-4a8e-a6c3-ced5e260f560",
+    "name": "Fixture",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "52026757",
+    "_collection_link": "https://go.postman.co/collection/52026757-a12e506c-1c68-4a8e-a6c3-ced5e260f560?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "matches",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5ZjhhOWIzODFmZThkYjY4OTE4NTNiNSIsImVtYWlsIjoibWFudTg4QGVqZW1wbG8uY29tIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3Nzc5MzY3MzQsImV4cCI6MTc3Nzk0MDMzNH0.c-KYMUC9BRvON8NNLfYkpQo2T3wAq-54Wrj2T7e7hp8",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/matches?league=1&season=2022&status=FT&from=2022-11-20&to=2022-12-18",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "matches"
+          ],
+          "query": [
+            {
+              "key": "league",
+              "value": "1"
+            },
+            {
+              "key": "season",
+              "value": "2022"
+            },
+            {
+              "key": "status",
+              "value": "FT"
+            },
+            {
+              "key": "from",
+              "value": "2022-11-20"
+            },
+            {
+              "key": "to",
+              "value": "2022-12-18"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

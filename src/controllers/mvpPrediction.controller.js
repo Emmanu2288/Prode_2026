@@ -13,13 +13,7 @@ export const createMvpPrediction = async (req, res) => {
       return res.status(400).json({ error: "Faltan datos: match y user son requeridos." });
     }
 
-    // Comprobación previa opcional para dar feedback rápido
-    const already = await MvpPrediction.findOne({ user, match });
-    if (already) {
-      return res.status(409).json({ error: "Ya existe una predicción de MVP para este usuario y partido." });
-    }
-
-    // Consultar estado del partido en la API
+    // Consultar estado del partido en la API para validar y obtener el matchId externo
     const response = await axios.get(`${API_URL}/fixtures`, {
       params: { id: match },
       headers: { "x-apisports-key": API_KEY }
@@ -30,15 +24,32 @@ export const createMvpPrediction = async (req, res) => {
       return res.status(404).json({ error: "Partido no encontrado en la API." });
     }
 
+    // Extraer el id del proveedor de forma consistente
+    const externalMatchId = String(fixture?.fixture?.id ?? fixture?.id ?? match);
+
+    // Comprobación previa para evitar duplicados (por user + match)
+    // Nota: el esquema original de MvpPrediction define 'match' como ObjectId.
+    // Si en tu DB guardás el id externo como string en 'match', esta búsqueda funcionará.
+    const already = await MvpPrediction.findOne({ user, match: externalMatchId });
+    if (already) {
+      return res.status(409).json({ error: "Ya existe una predicción de MVP para este usuario y partido." });
+    }
+
     const status = fixture.status?.short;
 
-    // Bloqueo si el partido ya empezó o terminó
-    if (status !== "NS") {
+    // Permitir bypass en desarrollo para pruebas manuales
+    const allowForce = process.env.NODE_ENV !== "production" && req.query?.force === "true";
+    if (!allowForce && status !== "NS") {
       return res.status(400).json({ error: "El partido ya comenzó, no se puede modificar la apuesta de MVP." });
     }
 
-    // Intentamos crear la predicción
-    const prediction = await MvpPrediction.create({ user, match, mvpPlayer });
+    // Crear la predicción usando el externalMatchId en el campo 'match' (string)
+    const prediction = await MvpPrediction.create({
+      user,
+      match: externalMatchId,
+      mvpPlayer
+    });
+
     return res.status(201).json(prediction);
   } catch (err) {
     // Manejo explícito de error de índice único (duplicado)

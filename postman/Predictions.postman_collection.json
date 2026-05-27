@@ -1,0 +1,57 @@
+{
+  "info": {
+    "_postman_id": "9660a568-37a4-4376-96db-d1d36656dddf",
+    "name": "Predictions",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "52026757",
+    "_collection_link": "https://go.postman.co/collection/52026757-9660a568-37a4-4376-96db-d1d36656dddf?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Creation Predictions",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5ZjhhOWIzODFmZThkYjY4OTE4NTNiNSIsImVtYWlsIjoibWFudTg4QGVqZW1wbG8uY29tIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3Nzc5MzY3MzQsImV4cCI6MTc3Nzk0MDMzNH0.c-KYMUC9BRvON8NNLfYkpQo2T3wAq-54Wrj2T7e7hp8",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"user\": \"69f89ef05ebbb9906ed0b51c\",\r\n  \"match\": \"855736\",\r\n  \"predictedScore\": \"1-1\",\r\n  \"mvpPlayer\": \"Enner Valencia\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/predictions?force=true",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "predictions"
+          ],
+          "query": [
+            {
+              "key": "force",
+              "value": "true"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

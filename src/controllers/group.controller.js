@@ -8,18 +8,25 @@ export const createGroup = async (req, res) => {
     const { name, description, isPublic = false, inviteOnly = true } = req.body;
     if (!name) return res.status(400).json({ message: "El nombre del grupo es requerido" });
 
+    // Normalizar owner: preferimos req.user.id, pero soportamos sub/_id o fallback a body.owner
+    const ownerId = req.user?.id || req.user?.sub || req.user?._id || req.body?.owner;
+    if (!ownerId) {
+      return res.status(400).json({ message: "Owner no especificado. Asegurate de enviar Authorization Bearer token." });
+    }
+
     const group = await Group.create({
       name,
       description,
-      owner: req.user.id,
+      owner: ownerId,
       isPublic,
       inviteOnly
     });
 
     // Crear membership del owner (role owner)
     try {
-      await Membership.create({ group: group._id, user: req.user.id, roleInGroup: "owner" });
+      await Membership.create({ group: group._id, user: ownerId, roleInGroup: "owner" });
     } catch (err) {
+      // Si es duplicado (11000) lo ignoramos; si no, lo logueamos
       if (err.code !== 11000) console.error("createGroup membership error:", err);
     }
 

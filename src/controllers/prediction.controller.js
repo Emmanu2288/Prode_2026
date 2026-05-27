@@ -5,7 +5,6 @@ const API_URL = "https://v3.football.api-sports.io";
 const API_KEY = process.env.FOOTBALL_API_KEY;
 
 // Crear predicción partido a partido (resultado + MVP)
-// Crear predicción partido a partido (resultado + MVP)
 export const createPrediction = async (req, res) => {
   try {
     const { match, user, predictedScore, mvpPlayer } = req.body;
@@ -14,13 +13,7 @@ export const createPrediction = async (req, res) => {
       return res.status(400).json({ error: "Faltan datos: match y user son requeridos." });
     }
 
-    // Comprobación previa opcional para dar feedback rápido
-    const already = await Prediction.findOne({ user, match });
-    if (already) {
-      return res.status(409).json({ error: "Ya existe una predicción para este usuario y partido." });
-    }
-
-    // Consultar estado del partido en la API
+    // Consultar estado del partido en la API para validar y obtener el matchId externo
     const response = await axios.get(`${API_URL}/fixtures`, {
       params: { id: match },
       headers: { "x-apisports-key": API_KEY }
@@ -31,15 +24,31 @@ export const createPrediction = async (req, res) => {
       return res.status(404).json({ error: "Partido no encontrado en la API." });
     }
 
+    // Extraer el id del proveedor de forma consistente (puede venir en fixture.fixture.id o fixture.id)
+    const externalMatchId = String(fixture?.fixture?.id ?? fixture?.id ?? match);
+
+    // Comprobación previa para evitar duplicados (por user + matchId)
+    const already = await Prediction.findOne({ user, matchId: externalMatchId });
+    if (already) {
+      return res.status(409).json({ error: "Ya existe una predicción para este usuario y partido." });
+    }
+
     const status = fixture.status?.short;
 
-    // Bloqueo si el partido ya empezó o terminó
-    if (status !== "NS") {
+    // Permitir bypass en desarrollo para pruebas manuales
+    const allowForce = process.env.NODE_ENV !== "production" && req.query?.force === "true";
+    if (!allowForce && status !== "NS") {
       return res.status(400).json({ error: "El partido ya comenzó, no se puede modificar la apuesta." });
     }
 
-    // Intentamos crear la predicción
-    const prediction = await Prediction.create({ user, match, predictedScore, mvpPlayer });
+    // Crear la predicción usando matchId (string) para mantener compatibilidad con webhooks/reconciler
+    const prediction = await Prediction.create({
+      user,
+      matchId: externalMatchId,
+      predictedScore,
+      mvpPlayer
+    });
+
     return res.status(201).json(prediction);
   } catch (err) {
     // Manejo explícito de error de índice único (duplicado)
@@ -55,11 +64,12 @@ export const createPrediction = async (req, res) => {
 // Asignar predicción automática 0-0 si el usuario no apostó antes del inicio
 export const assignDefaultPrediction = async (matchId, userId) => {
   try {
-    const existing = await Prediction.findOne({ user: userId, match: matchId });
+    // Buscar por matchId (string)
+    const existing = await Prediction.findOne({ user: userId, matchId: matchId });
     if (!existing) {
       await Prediction.create({
         user: userId,
-        match: matchId,
+        matchId: matchId,
         predictedScore: "0-0"
       });
     }

@@ -22,8 +22,22 @@ export const verifyToken = (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
-    // Guardamos solo lo necesario
-    req.user = { id: decoded.id, email: decoded.email, role: decoded.role };
+
+    // Normalizar distintos nombres de claim que el token pueda traer
+    const userId = decoded?.id || decoded?.sub || decoded?._id;
+
+    if (!userId) {
+      console.error("verifyToken error: token no contiene id/sub/_id", decoded);
+      return res.status(401).json({ message: "Token inválido: falta identificador de usuario" });
+    }
+
+    // Guardamos solo lo necesario en req.user
+    req.user = {
+      id: userId,
+      email: decoded?.email,
+      role: decoded?.role
+    };
+
     return next();
   } catch (error) {
     console.error("verifyToken error:", error);
