@@ -6,6 +6,11 @@ import { roleMiddleware } from "../middlewares/role.middleware.js";
 export const initUserRoutes = (app) => {
   const router = Router();
 
+  // Ruta exclusiva de admin (demuestra 401/403)
+  router.get("/admin", verifyToken, roleMiddleware(["admin"]), (req, res) => {
+    res.json({ message: "Panel de administración", admin: req.user });
+  });
+
   // Listar todos los usuarios (administradores solamente)
   router.get("/", verifyToken, roleMiddleware(["admin"]), listUsers);
 

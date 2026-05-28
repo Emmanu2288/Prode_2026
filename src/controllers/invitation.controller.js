@@ -2,14 +2,16 @@ import Invitation from "../models/Invitation.js";
 import Membership from "../models/Membership.js";
 import Group from "../models/Group.js";
 import User from "../models/User.js";
-import { sendInvitationEmail } from "../services/email.service.js";
+import { notifyUserInvitation } from "../services/notification.service.js";
 
 /**
  * Invitar a un grupo (por userIds o emails).
  * Reglas:
  * - Si group.inviteOnly === true, solo el owner puede invitar.
- * - Si el email ya pertenece a un usuario, se crea la membership directamente.
- * - Si el email no existe, se crea una Invitation y se envía email con token.
+ * - Si el usuario ya está registrado: se crea una Invitation y se le notifica
+ *   via Socket.IO para que acepte o rechace desde la app.
+ * - Si el email no existe en la app: se crea una Invitation y se devuelve
+ *   un link de registro para compartir manualmente.
  */
 export const inviteToGroup = async (req, res) => {
   try {
@@ -24,31 +26,57 @@ export const inviteToGroup = async (req, res) => {
       return res.status(403).json({ message: "Solo el creador puede invitar a este grupo" });
     }
 
+    const inviter = await User.findById(req.user.id).lean();
     const results = { invited: [], skipped: [], errors: [] };
 
-    // Invitar por userIds (usuarios ya registrados)
+    // Invitar por userId (usuarios ya registrados) — se crea Invitation + notificación in-app
     for (const uid of userIds) {
       try {
-        // Evitar invitar al mismo owner otra vez
         if (uid === group.owner.toString()) {
           results.skipped.push({ userId: uid, reason: "Es el owner" });
           continue;
         }
 
-        await Membership.create({ group: group._id, user: uid });
-        results.invited.push({ userId: uid });
-      } catch (err) {
-        if (err && err.code === 11000) {
+        // Verificar si ya es miembro
+        const isMember = await Membership.exists({ group: group._id, user: uid });
+        if (isMember) {
           results.skipped.push({ userId: uid, reason: "Ya es miembro" });
-        } else {
-          console.error("inviteToGroup membership error:", err);
-          results.errors.push({ userId: uid, error: err.message || String(err) });
+          continue;
         }
+
+        // Verificar si ya tiene invitación pendiente
+        const pendingInvitation = await Invitation.findOne({
+          group: group._id,
+          invitedUser: uid,
+          status: "pending"
+        });
+        if (pendingInvitation) {
+          results.skipped.push({ userId: uid, reason: "Ya tiene invitación pendiente" });
+          continue;
+        }
+
+        // Crear Invitation para el usuario registrado
+        const invitation = await Invitation.create({
+          group: group._id,
+          inviter: req.user.id,
+          invitedUser: uid
+        });
+
+        // Notificar al usuario via Socket.IO (si está conectado)
+        notifyUserInvitation(uid, invitation, group, inviter);
+
+        results.invited.push({ userId: uid, invitationToken: invitation.token });
+      } catch (err) {
+        console.error("inviteToGroup userId error:", err);
+        results.errors.push({ userId: uid, error: err.message || String(err) });
       }
     }
 
-    // Invitar por email (puede ser usuario existente o externo)
-    for (const email of emails) {
+    // Normalizar emails (puede venir como string o array)
+    const emailList = Array.isArray(emails) ? emails : [emails];
+
+    // Invitar por email
+    for (const email of emailList) {
       try {
         const normalized = email.toLowerCase().trim();
         if (!normalized) {
@@ -59,43 +87,49 @@ export const inviteToGroup = async (req, res) => {
         const existingUser = await User.findOne({ email: normalized });
 
         if (existingUser) {
-          // Si existe usuario, crear membership directamente
-          try {
-            if (existingUser._id.toString() === group.owner.toString()) {
-              results.skipped.push({ email: normalized, reason: "Es el owner" });
-              continue;
-            }
-            await Membership.create({ group: group._id, user: existingUser._id });
-            results.invited.push({ email: normalized, userId: existingUser._id });
+          // Si el usuario existe pero no fue pasado como userId, lo tratamos igual
+          if (existingUser._id.toString() === group.owner.toString()) {
+            results.skipped.push({ email: normalized, reason: "Es el owner" });
             continue;
-          } catch (err) {
-            if (err && err.code === 11000) {
-              results.skipped.push({ email: normalized, reason: "Ya es miembro" });
-              continue;
-            }
-            throw err;
           }
+
+          const isMember = await Membership.exists({ group: group._id, user: existingUser._id });
+          if (isMember) {
+            results.skipped.push({ email: normalized, reason: "Ya es miembro" });
+            continue;
+          }
+
+          const pendingInvitation = await Invitation.findOne({
+            group: group._id,
+            invitedUser: existingUser._id,
+            status: "pending"
+          });
+          if (pendingInvitation) {
+            results.skipped.push({ email: normalized, reason: "Ya tiene invitación pendiente" });
+            continue;
+          }
+
+          const invitation = await Invitation.create({
+            group: group._id,
+            inviter: req.user.id,
+            invitedUser: existingUser._id,
+            email: normalized
+          });
+
+          notifyUserInvitation(existingUser._id.toString(), invitation, group, inviter);
+          results.invited.push({ email: normalized, userId: existingUser._id, invitationToken: invitation.token });
+          continue;
         }
 
-        // Si no existe, crear Invitation y enviar email con token
+        // Si el email no existe en la app: crear Invitation y devolver link de registro
         const invitation = await Invitation.create({
           group: group._id,
           inviter: req.user.id,
           email: normalized
         });
 
-        // Enviar email en background (no bloquea la respuesta)
-        sendInvitationEmail(invitation, group, {
-          first_name: req.user.first_name,
-          last_name: req.user.last_name,
-          email: req.user.email
-        })
-          .then((r) => {
-            if (!r.ok) console.warn("No se pudo enviar invitación por email:", r.error);
-          })
-          .catch((e) => console.error("sendInvitationEmail unexpected error:", e));
-
-        results.invited.push({ email: normalized, invitationToken: invitation.token });
+        const link = `${process.env.FRONTEND_URL || "http://localhost:5173"}/register?token=${invitation.token}`;
+        results.invited.push({ email: normalized, invitationToken: invitation.token, link });
       } catch (err) {
         console.error("inviteToGroup email error:", err);
         results.errors.push({ email, error: err.message || String(err) });
@@ -110,8 +144,28 @@ export const inviteToGroup = async (req, res) => {
 };
 
 /**
- * Aceptar invitación por token (GET para web, POST para API)
- * Si req.user existe, se crea la membership; si no, devolver info para registro.
+ * Listar invitaciones pendientes del usuario autenticado
+ */
+export const getMyPendingInvitations = async (req, res) => {
+  try {
+    const invitations = await Invitation.find({
+      invitedUser: req.user.id,
+      status: "pending",
+      expiresAt: { $gt: new Date() }
+    })
+      .populate("group", "name description")
+      .populate("inviter", "first_name last_name email")
+      .lean();
+
+    return res.json(invitations);
+  } catch (err) {
+    console.error("getMyPendingInvitations error:", err);
+    return res.status(500).json({ message: "Error al obtener invitaciones", error: err.message || String(err) });
+  }
+};
+
+/**
+ * Aceptar invitación por token
  */
 export const acceptInvitation = async (req, res) => {
   try {
@@ -127,7 +181,6 @@ export const acceptInvitation = async (req, res) => {
     if (req.user && req.user.id) {
       const userId = req.user.id;
 
-      // Crear membership si no existe
       try {
         await Membership.create({ group: invitation.group, user: userId });
       } catch (err) {
@@ -138,14 +191,27 @@ export const acceptInvitation = async (req, res) => {
       }
 
       invitation.status = "accepted";
-      invitation.invitedUser = userId;
+      invitation.invitedUser = invitation.invitedUser || userId;
       await invitation.save();
+
+      // Notificar al invitador que fue aceptado
+      if (invitation.inviter && globalThis.io) {
+        globalThis.io.to(`user_${invitation.inviter}`).emit("invitation_accepted", {
+          groupId: invitation.group,
+          acceptedBy: userId
+        });
+      }
 
       return res.json({ message: "Invitación aceptada", group: invitation.group });
     }
 
-    // Si no está autenticado, devolver info para que complete registro y use token
-    return res.json({ message: "Registro requerido", email: invitation.email, token: invitation.token });
+    // Si no está autenticado, devolver info para que complete el registro
+    return res.json({
+      message: "Registro requerido para aceptar la invitación",
+      email: invitation.email,
+      token: invitation.token,
+      registerUrl: `${process.env.FRONTEND_URL || "http://localhost:5173"}/register?token=${invitation.token}`
+    });
   } catch (err) {
     console.error("acceptInvitation error:", err);
     return res.status(500).json({ message: "Error al aceptar invitación", error: err.message || String(err) });
@@ -153,7 +219,7 @@ export const acceptInvitation = async (req, res) => {
 };
 
 /**
- * Rechazar invitación (token o id)
+ * Rechazar invitación por token
  */
 export const rejectInvitation = async (req, res) => {
   try {
@@ -167,6 +233,14 @@ export const rejectInvitation = async (req, res) => {
     invitation.status = "rejected";
     await invitation.save();
 
+    // Notificar al invitador que fue rechazado
+    if (invitation.inviter && globalThis.io) {
+      globalThis.io.to(`user_${invitation.inviter}`).emit("invitation_rejected", {
+        groupId: invitation.group,
+        rejectedBy: req.user?.id || null
+      });
+    }
+
     return res.json({ message: "Invitación rechazada" });
   } catch (err) {
     console.error("rejectInvitation error:", err);
@@ -176,6 +250,7 @@ export const rejectInvitation = async (req, res) => {
 
 export default {
   inviteToGroup,
+  getMyPendingInvitations,
   acceptInvitation,
   rejectInvitation
 };

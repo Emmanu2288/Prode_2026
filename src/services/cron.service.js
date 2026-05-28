@@ -127,7 +127,7 @@ export const reconcileMatch = async (fixture) => {
 };
 
 export const scheduleFinalizeMatchesReconciler = () => {
-  cron.schedule("*/1 * * * *", async () => {
+  cron.schedule("*/5 * * * *", async () => {
     console.log("⏰ Cron reconciler: buscando partidos FT para reconciliar...");
 
     try {

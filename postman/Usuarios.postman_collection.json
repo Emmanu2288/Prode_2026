@@ -2,108 +2,203 @@
   "info": {
     "_postman_id": "7cab2c88-ef3f-49ea-b0fd-0e4895b96f23",
     "name": "Usuarios",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "52026757",
-    "_collection_link": "https://go.postman.co/collection/52026757-7cab2c88-ef3f-49ea-b0fd-0e4895b96f23?source=collection_link"
+    "description": "Registro, login, sesión, perfil, rutas protegidas y logout del Prode 2026",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "register",
+      "name": "1. Registrar usuario",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Status 201', () => pm.response.to.have.status(201));",
+        "pm.test('Devuelve usuario creado', () => {",
+        "  const data = pm.response.json();",
+        "  pm.expect(data).to.have.property('user');",
+        "  pm.expect(data.user).to.have.property('email');",
+        "});"
+      ], "type": "text/javascript" } }],
       "request": {
         "method": "POST",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n  \"first_name\": \"Manu\",\r\n  \"last_name\": \"Perez\",\r\n  \"email\": \"manu@ejemplo.com\",\r\n  \"password\": \"123456\"\r\n}\r\n",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "http://localhost:3000/api/auth/register",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "3000",
-          "path": [
-            "api",
-            "auth",
-            "register"
-          ]
-        }
-      },
-      "response": []
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"first_name\": \"Juan\",\n  \"last_name\": \"Perez\",\n  \"email\": \"juan@ejemplo.com\",\n  \"password\": \"Juan1234\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+      }
     },
     {
-      "name": "user verify",
-      "protocolProfileBehavior": {
-        "disableBodyPruning": true
-      },
+      "name": "2. Registrar con token de invitación",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Status 201', () => pm.response.to.have.status(201));",
+        "pm.test('Usuario creado y unido al grupo', () => {",
+        "  const data = pm.response.json();",
+        "  pm.expect(data.message).to.include('exitosamente');",
+        "});"
+      ], "type": "text/javascript" } }],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"first_name\": \"Invitado\",\n  \"last_name\": \"Test\",\n  \"email\": \"invitado@ejemplo.com\",\n  \"password\": \"Invitado1234\",\n  \"inviteToken\": \"{{inviteToken}}\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+      }
+    },
+    {
+      "name": "3. Login",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+        "pm.test('Devuelve token y guarda en env', () => {",
+        "  const data = pm.response.json();",
+        "  pm.expect(data).to.have.property('token');",
+        "  pm.expect(data).to.have.property('user');",
+        "  pm.environment.set('token', data.token);",
+        "  pm.environment.set('userId', data.user.id);",
+        "  console.log('✅ Token guardado para:', data.user.email);",
+        "  console.log('   El servidor también setea la cookie authToken (httpOnly, sameSite: lax).');",
+        "});"
+      ], "type": "text/javascript" } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"juan@ejemplo.com\",\n  \"password\": \"Juan1234\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+      }
+    },
+    {
+      "name": "4. Login con credenciales incorrectas (espera 401)",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Status 401', () => pm.response.to.have.status(401));",
+        "pm.test('Mensaje de error', () => {",
+        "  const data = pm.response.json();",
+        "  pm.expect(data.message).to.include('inválidas');",
+        "});"
+      ], "type": "text/javascript" } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"juan@ejemplo.com\",\n  \"password\": \"contraseniaWRONG\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+      }
+    },
+    {
+      "name": "5. Verificar sesión activa (GET /profile)",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Status 200 - sesión válida', () => pm.response.to.have.status(200));",
+        "pm.test('Devuelve datos del usuario autenticado', () => {",
+        "  const data = pm.response.json();",
+        "  pm.expect(data).to.have.property('_id');",
+        "  pm.expect(data).to.have.property('email');",
+        "  pm.expect(data).to.not.have.property('password');",
+        "  console.log('✅ Perfil:', data.first_name, data.last_name, '| Role:', data.role);",
+        "});"
+      ], "type": "text/javascript" } }],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": { "raw": "{{baseUrl}}/api/auth/profile", "host": ["{{baseUrl}}"], "path": ["api", "auth", "profile"] },
+        "description": "Ruta protegida por JWT. Devuelve los datos del usuario logueado sin necesitar el userId.\nSi el token es inválido o expirado → 401."
+      }
+    },
+    {
+      "name": "6. Verificar sesión sin token (espera 401)",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Status 401 - sin autenticación', () => pm.response.to.have.status(401));",
+        "pm.test('Mensaje de sesión inactiva', () => {",
+        "  const data = pm.response.json();",
+        "  pm.expect(data.authenticated).to.be.false;",
+        "  console.log('✅ Correcto: sin token la sesión no está activa.');",
+        "});"
+      ], "type": "text/javascript" } }],
+      "request": {
         "method": "GET",
         "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n  \"first_name\": \"Manu\",\r\n  \"last_name\": \"Perez\",\r\n  \"email\": \"manu@ejemplo.com\",\r\n  \"password\": \"123456\"\r\n}\r\n",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "http://localhost:3000/api/users",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "3000",
-          "path": [
-            "api",
-            "users"
-          ]
-        }
-      },
-      "response": []
+        "url": { "raw": "{{baseUrl}}/api/auth/session", "host": ["{{baseUrl}}"], "path": ["api", "auth", "session"] }
+      }
     },
     {
-      "name": "login",
+      "name": "7. Ruta admin (token de admin)",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Status 200 - admin autorizado', () => pm.response.to.have.status(200));",
+        "pm.test('Respuesta del panel admin', () => {",
+        "  const data = pm.response.json();",
+        "  pm.expect(data.message).to.include('administración');",
+        "  pm.expect(data.admin.role).to.equal('admin');",
+        "  console.log('✅ Acceso admin OK. User:', data.admin.id);",
+        "});"
+      ], "type": "text/javascript" } }],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+        "url": { "raw": "{{baseUrl}}/api/users/admin", "host": ["{{baseUrl}}"], "path": ["api", "users", "admin"] },
+        "description": "Protegida por verifyToken + roleMiddleware(['admin']).\nUsando el adminToken → 200.\nUsando token de usuario normal → 403."
+      }
+    },
+    {
+      "name": "8. Ruta admin con token de usuario normal (espera 403)",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Status 403 - usuario sin permisos', () => pm.response.to.have.status(403));",
+        "pm.test('Mensaje de acceso denegado', () => {",
+        "  const data = pm.response.json();",
+        "  pm.expect(data.message).to.include('Acceso denegado');",
+        "  console.log('✅ Correcto: usuario normal no puede acceder al panel admin.');",
+        "});"
+      ], "type": "text/javascript" } }],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": { "raw": "{{baseUrl}}/api/users/admin", "host": ["{{baseUrl}}"], "path": ["api", "users", "admin"] }
+      }
+    },
+    {
+      "name": "9. Listar usuarios (solo admin)",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+        "pm.test('Devuelve array de usuarios', () => {",
+        "  const data = pm.response.json();",
+        "  pm.expect(data).to.be.an('array');",
+        "  console.log('Total usuarios:', data.length);",
+        "});"
+      ], "type": "text/javascript" } }],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+        "url": { "raw": "{{baseUrl}}/api/users", "host": ["{{baseUrl}}"], "path": ["api", "users"] }
+      }
+    },
+    {
+      "name": "10. Actualizar perfil propio",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Status 200', () => pm.response.to.have.status(200));",
+        "pm.test('Perfil actualizado', () => {",
+        "  const data = pm.response.json();",
+        "  pm.expect(data).to.have.property('user');",
+        "});"
+      ], "type": "text/javascript" } }],
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"first_name\": \"Juan Actualizado\",\n  \"last_name\": \"Perez\"\n}", "options": { "raw": { "language": "json" } } },
+        "url": { "raw": "{{baseUrl}}/api/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api", "users", "{{userId}}"] }
+      }
+    },
+    {
+      "name": "11. Logout",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('Status 200 - sesión cerrada', () => pm.response.to.have.status(200));",
+        "pm.test('Mensaje de cierre de sesión', () => {",
+        "  const data = pm.response.json();",
+        "  pm.expect(data.message).to.include('cerrada');",
+        "  // Limpiar token del environment",
+        "  pm.environment.unset('token');",
+        "  pm.environment.unset('userId');",
+        "  console.log('✅ Sesión cerrada. Cookie authToken eliminada. Token removido del environment.');",
+        "});"
+      ], "type": "text/javascript" } }],
+      "request": {
         "method": "POST",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n  \"email\": \"manu@ejemplo.com\",\r\n  \"password\": \"123456\"\r\n}\r\n",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "http://localhost:3000/api/auth/login",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "3000",
-          "path": [
-            "api",
-            "auth",
-            "login"
-          ]
-        }
-      },
-      "response": []
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "auth", "logout"] },
+        "description": "Destruye la sesión de express-session en MongoDB, limpia la cookie authToken.\nDespués de esto, cualquier request con el mismo token devolverá 401."
+      }
     }
   ]
 }

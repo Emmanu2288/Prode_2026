@@ -9,6 +9,8 @@ const predictionSchema = new Schema({
   // ID del proveedor / fixture id externo (string). Recomendado para búsquedas desde webhooks.
   matchId: { type: String, index: true, required: false },
   predictedScore: { type: String },
+  mvpPlayer: { type: String },
+  points: { type: Number, default: 0 },
   worldChampion: { type: String },
   bestPlayer: { type: String },
   topScorer: { type: String },

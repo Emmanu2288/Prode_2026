@@ -34,8 +34,9 @@ export const calculatePointsFinal = (prediction, finalGoals, finalMvp) => {
       if (predDiff === finalDiff) points += 1;
     }
 
-    // MVP
-    if (prediction.mvp && finalMvp && String(prediction.mvp) === String(finalMvp)) {
+    // MVP (campo mvpPlayer en la predicción, finalMvp viene del webhook del admin)
+    const predMvp = prediction.mvpPlayer ?? prediction.mvp ?? null;
+    if (predMvp && finalMvp && String(predMvp).toLowerCase() === String(finalMvp).toLowerCase()) {
       points += 2;
     }
 

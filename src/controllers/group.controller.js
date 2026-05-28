@@ -1,6 +1,5 @@
 import Group from "../models/Group.js";
 import Membership from "../models/Membership.js";
-import GroupPoints from "../models/GroupPoints.js";
 import { inviteToGroup as inviteToGroupController } from "./invitation.controller.js";
 
 export const createGroup = async (req, res) => {
@@ -55,26 +54,8 @@ export const getGroupMembers = async (req, res) => {
   }
 };
 
-/**
- * Leaderboard por grupo (usa GroupPoints si existe)
- */
-export const getGroupLeaderboard = async (req, res) => {
-  try {
-    const { groupId } = req.params;
-    const leaderboard = await GroupPoints.find({ group: groupId })
-      .sort({ points: -1 })
-      .limit(100)
-      .populate("user", "first_name last_name email");
-    return res.json(leaderboard);
-  } catch (err) {
-    console.error("getGroupLeaderboard error:", err);
-    return res.status(500).json({ message: "Error al obtener leaderboard" });
-  }
-};
-
 export default {
   createGroup,
   inviteToGroup,
-  getGroupMembers,
-  getGroupLeaderboard
+  getGroupMembers
 };

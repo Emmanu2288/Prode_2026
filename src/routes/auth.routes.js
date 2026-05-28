@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { registerUser, loginUser } from "../controllers/auth.controller.js";
+import { registerUser, loginUser, logoutUser, getProfile, getSession } from "../controllers/auth.controller.js";
+import { verifyToken } from "../middlewares/auth.middleware.js";
 import passport from "../config/passport.js";
 
 export const initAuthRoutes = (app) => {
@@ -7,6 +8,9 @@ export const initAuthRoutes = (app) => {
 
   router.post("/register", registerUser);
   router.post("/login", loginUser);
+  router.post("/logout", logoutUser);
+  router.get("/profile", verifyToken, getProfile);
+  router.get("/session", verifyToken, getSession);
 
   router.post(
     "/passport-login",

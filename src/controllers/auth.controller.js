@@ -1,8 +1,9 @@
 import User from "../models/User.js";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Invitation from "../models/Invitation.js";
 import Membership from "../models/Membership.js";
+
+const COOKIE_NAME = "authToken";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = "1h";
@@ -27,15 +28,12 @@ export const registerUser = async (req, res) => {
       return res.status(409).json({ message: "El email ya existe" });
     }
 
-    // Hashear contraseña 
-    const salt = await bcrypt.genSalt(10);
-    const hashed = await bcrypt.hash(password, salt);
-
+    // El modelo User tiene un pre-save hook que hashea la contraseña automáticamente
     const newUser = new User({
       first_name,
       last_name,
       email: normalizedEmail,
-      password: hashed
+      password
     });
 
     await newUser.save();
@@ -112,9 +110,9 @@ export const loginUser = async (req, res) => {
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
     // Cookie segura
-    res.cookie("token", token, {
+    res.cookie(COOKIE_NAME, token, {
       httpOnly: true,
-      sameSite: "Strict",
+      sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       maxAge: 1000 * 60 * 60 // 1 hora
     });
@@ -132,4 +130,55 @@ export const loginUser = async (req, res) => {
     console.error("loginUser error:", error);
     return res.status(500).json({ message: "Error en el login" });
   }
+};
+
+/**
+ * Logout
+ * - Destruye la sesión de Passport/express-session
+ * - Limpia la cookie authToken
+ */
+export const logoutUser = (req, res) => {
+  req.logout((err) => {
+    if (err) console.error("logout error:", err);
+    req.session.destroy((destroyErr) => {
+      if (destroyErr) console.error("session destroy error:", destroyErr);
+      res.clearCookie(COOKIE_NAME);
+      return res.json({ message: "Sesión cerrada correctamente" });
+    });
+  });
+};
+
+/**
+ * GET /api/auth/profile
+ * Devuelve los datos del usuario autenticado (requiere JWT).
+ * Útil para que el frontend cargue el perfil sin conocer el userId de antemano.
+ */
+export const getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+    if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
+    return res.json(user);
+  } catch (error) {
+    console.error("getProfile error:", error);
+    return res.status(500).json({ message: "Error al obtener el perfil" });
+  }
+};
+
+/**
+ * GET /api/auth/session
+ * Verifica si hay una sesión activa (Passport session o JWT en cookie/header).
+ * Útil para que el frontend sepa si el usuario sigue logueado al refrescar la página.
+ */
+export const getSession = async (req, res) => {
+  // Si el middleware verifyToken ya resolvió el usuario (JWT)
+  if (req.user && req.user.id) {
+    try {
+      const user = await User.findById(req.user.id).select("-password");
+      return res.json({ authenticated: true, user });
+    } catch (err) {
+      console.error("getSession error:", err);
+      return res.status(500).json({ message: "Error al verificar sesión" });
+    }
+  }
+  return res.status(401).json({ authenticated: false, message: "Sin sesión activa" });
 };

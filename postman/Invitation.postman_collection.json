@@ -2,52 +2,225 @@
   "info": {
     "_postman_id": "2aec41f4-6142-47ef-92c0-1d660e99b4c1",
     "name": "Invitation",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "52026757",
-    "_collection_link": "https://go.postman.co/collection/52026757-2aec41f4-6142-47ef-92c0-1d660e99b4c1?source=collection_link"
+    "description": "Flujos de invitación in-app y por link.\n\nFlujo registrado: POST /api/groups/:groupId/invite con userIds → se crea Invitation + Socket.IO notifica al invitado → el invitado acepta/rechaza desde la app.\n\nFlujo no registrado: POST /api/groups/:groupId/invite con emails → devuelve un link → el invitado se registra con ese link y queda en el grupo.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Send Invitation",
+      "name": "0. Ver mis invitaciones pendientes",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Devuelve array de invitaciones', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data).to.be.an('array');",
+              "  if (data.length > 0) {",
+              "    const inv = data[0];",
+              "    pm.expect(inv).to.have.property('token');",
+              "    pm.expect(inv).to.have.property('status', 'pending');",
+              "    // Guardar el primer token para usar en los siguientes requests",
+              "    pm.environment.set('inviteToken', inv.token);",
+              "    console.log('Invitación pendiente:', inv.group?.name, '| Token:', inv.token);",
+              "    console.log('Invitador:', inv.inviter?.first_name, inv.inviter?.last_name);",
+              "  } else {",
+              "    console.log('No hay invitaciones pendientes para este usuario.');",
+              "  }",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/invitations/pending",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "invitations", "pending"]
+        },
+        "description": "Lista las invitaciones pendientes del usuario logueado.\nUsar cuando el usuario abre la app y quiere ver si alguien lo invitó a un grupo.\nEl test guarda el primer token en {{inviteToken}} para facilitar los siguientes requests."
+      }
+    },
+    {
+      "name": "1. Aceptar invitación (usuario autenticado)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Invitación aceptada y unido al grupo', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.message).to.include('aceptada');",
+              "  pm.expect(data).to.have.property('group');",
+              "  console.log('✅ Unido al grupo:', data.group);",
+              "  console.log('El invitador recibe una notificación Socket.IO invitation_accepted.');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
       "request": {
         "method": "POST",
         "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OWY5MjgzNmYwMjUxZjBhOTdiMjIxOTkiLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3Nzk4ODkyOTQsImV4cCI6MTc4MDQ5NDA5NH0.c_w2SYvcemw9PAAWdhVVx4TMWhc6tXUniJghUoKPaZg",
-            "type": "text"
-          }
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{ \"email\": \"manu88@ejemplo.com\" }\r\n",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
+          "raw": "{\n  \"token\": \"{{inviteToken}}\"\n}",
+          "options": { "raw": { "language": "json" } }
         },
         "url": {
-          "raw": "http://localhost:3000/api/groups/6a16fb37835d1b279aa2ad12/invite",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "3000",
-          "path": [
-            "api",
-            "groups",
-            "6a16fb37835d1b279aa2ad12",
-            "invite"
-          ]
+          "raw": "{{baseUrl}}/api/invitations/accept",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "invitations", "accept"]
+        },
+        "description": "Usuario logueado acepta una invitación usando el token.\nEl token viene del request 0 (invitaciones pendientes) o del link de registro.\nAl aceptar, se crea la Membership y el invitador recibe un evento Socket.IO."
+      }
+    },
+    {
+      "name": "2. Aceptar invitación sin estar logueado → pide registro",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Pide registrarse con el token', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.message).to.include('Registro requerido');",
+              "  pm.expect(data).to.have.property('token');",
+              "  pm.expect(data).to.have.property('registerUrl');",
+              "  console.log('URL de registro:', data.registerUrl);",
+              "  console.log('El frontend redirige a esta URL para que el usuario se registre.');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
         }
-      },
-      "response": []
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/invitations/accept?token={{inviteToken}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "invitations", "accept"],
+          "query": [{ "key": "token", "value": "{{inviteToken}}" }]
+        },
+        "description": "Alguien que no está registrado llega con el link compartido manualmente (WhatsApp, Instagram, etc.).\nSin login, el servidor devuelve el email del invitado y el registerUrl para que el frontend lo redirija al formulario de registro."
+      }
+    },
+    {
+      "name": "3. Registrarse con token de invitación (flujo externo completo)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('Usuario creado y agregado al grupo', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.message).to.include('exitosamente');",
+              "  console.log('✅ Nuevo usuario:', data.user?.email, '- ID:', data.user?.id);",
+              "  console.log('Al registrarse con inviteToken queda en el grupo automáticamente.');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"first_name\": \"Nuevo\",\n  \"last_name\": \"Amigo\",\n  \"email\": \"nuevo_amigo@ejemplo.com\",\n  \"password\": \"Amigo1234\",\n  \"inviteToken\": \"{{inviteToken}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "register"]
+        },
+        "description": "El usuario que llegó por el link compartido se registra pasando el inviteToken.\nAl registrarse queda automáticamente en el grupo y la invitación se marca como 'accepted'."
+      }
+    },
+    {
+      "name": "4. Rechazar invitación",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Invitación rechazada', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.message).to.include('rechazada');",
+              "  console.log('✅ Invitación rechazada. El invitador recibe Socket.IO invitation_rejected.');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/invitations/{{inviteToken}}/reject",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "invitations", "{{inviteToken}}", "reject"]
+        },
+        "description": "Rechaza una invitación pendiente. El token va en la URL."
+      }
+    },
+    {
+      "name": "5. Aceptar invitación ya rechazada (espera 400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400 - invitación ya procesada', () => pm.response.to.have.status(400));",
+              "pm.test('Mensaje indica estado de la invitación', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.message).to.include('Invitación');",
+              "  console.log('✅ Correcto: no se puede aceptar una invitación ya rechazada. Mensaje:', data.message);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"{{inviteToken}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/invitations/accept",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "invitations", "accept"]
+        },
+        "description": "Intentar aceptar una invitación que ya fue rechazada. Debe dar 400."
+      }
     }
   ]
 }

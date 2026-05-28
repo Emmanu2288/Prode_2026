@@ -7,43 +7,51 @@ const API_KEY = process.env.FOOTBALL_API_KEY;
 // Crear predicción partido a partido (resultado + MVP)
 export const createPrediction = async (req, res) => {
   try {
-    const { match, user, predictedScore, mvpPlayer } = req.body;
+    const { match, predictedScore, mvpPlayer } = req.body;
+    const userId = req.user.id;
 
-    if (!match || !user) {
-      return res.status(400).json({ error: "Faltan datos: match y user son requeridos." });
+    if (!match) {
+      return res.status(400).json({ error: "Faltan datos: match es requerido." });
     }
 
     // Consultar estado del partido en la API para validar y obtener el matchId externo
-    const response = await axios.get(`${API_URL}/fixtures`, {
-      params: { id: match },
-      headers: { "x-apisports-key": API_KEY }
-    });
+    let externalMatchId = String(match);
+    let statusBlocked = false;
 
-    const fixture = response.data?.response?.[0];
-    if (!fixture) {
-      return res.status(404).json({ error: "Partido no encontrado en la API." });
+    try {
+      const response = await axios.get(`${API_URL}/fixtures`, {
+        params: { id: match },
+        headers: { "x-apisports-key": API_KEY },
+        timeout: 5000
+      });
+
+      const fixture = response.data?.response?.[0];
+      if (fixture) {
+        externalMatchId = String(fixture?.fixture?.id ?? fixture?.id ?? match);
+        const status = fixture.status?.short;
+        const allowForce = process.env.NODE_ENV !== "production" && req.query?.force === "true";
+        if (!allowForce && status !== "NS") {
+          statusBlocked = true;
+        }
+      }
+    } catch (apiErr) {
+      // Si la API está caída o rate-limited, continuamos sin validación externa
+      console.warn("API de fútbol no disponible al crear predicción:", apiErr.message);
     }
 
-    // Extraer el id del proveedor de forma consistente (puede venir en fixture.fixture.id o fixture.id)
-    const externalMatchId = String(fixture?.fixture?.id ?? fixture?.id ?? match);
+    if (statusBlocked) {
+      return res.status(400).json({ error: "El partido ya comenzó, no se puede modificar la apuesta." });
+    }
 
     // Comprobación previa para evitar duplicados (por user + matchId)
-    const already = await Prediction.findOne({ user, matchId: externalMatchId });
+    const already = await Prediction.findOne({ user: userId, matchId: externalMatchId });
     if (already) {
       return res.status(409).json({ error: "Ya existe una predicción para este usuario y partido." });
     }
 
-    const status = fixture.status?.short;
-
-    // Permitir bypass en desarrollo para pruebas manuales
-    const allowForce = process.env.NODE_ENV !== "production" && req.query?.force === "true";
-    if (!allowForce && status !== "NS") {
-      return res.status(400).json({ error: "El partido ya comenzó, no se puede modificar la apuesta." });
-    }
-
     // Crear la predicción usando matchId (string) para mantener compatibilidad con webhooks/reconciler
     const prediction = await Prediction.create({
-      user,
+      user: userId,
       matchId: externalMatchId,
       predictedScore,
       mvpPlayer
@@ -94,7 +102,7 @@ export const updateExtras = async (req, res) => {
     }
 
     const prediction = await Prediction.findOneAndUpdate(
-      { user: req.body.user },
+      { user: req.user.id },
       {
         worldChampion: req.body.worldChampion,
         bestPlayer: req.body.bestPlayer,

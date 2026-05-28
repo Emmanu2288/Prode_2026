@@ -9,6 +9,7 @@ import { Server as IOServer } from 'socket.io';
 import cookieParser from 'cookie-parser';
 import passport from './config/passport.js';
 import session from 'express-session';
+import MongoStore from 'connect-mongo';
 import connectDB from './config/db.js';
 
 // Importamos inicializadores de rutas
@@ -40,15 +41,21 @@ const start = async () => {
     app.use(express.urlencoded({ extended: true }));
     app.use(cookieParser(process.env.COOKIE_SECRET));
 
-    // Configuración de sesiones
+    // Configuración de sesiones (persistidas en MongoDB con connect-mongo)
     app.use(session({
       secret: process.env.SESSION_SECRET,
       resave: false,
       saveUninitialized: false,
+      store: MongoStore.create({
+        mongoUrl: process.env.MONGO_URI,
+        collectionName: 'sessions',
+        ttl: 60 * 60 // 1 hora en segundos
+      }),
       cookie: {
         httpOnly: true,
-        sameSite: 'strict',
-        secure: process.env.NODE_ENV === 'production'
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 1000 * 60 * 60 // 1 hora en ms
       }
     }));
 
@@ -79,6 +86,13 @@ const start = async () => {
 
     io.on("connection", (socket) => {
       console.log("Socket conectado:", socket.id);
+
+      // Sala personal del usuario para recibir notificaciones (invitaciones, etc.)
+      socket.on("join_user", ({ userId }) => {
+        if (userId) socket.join(`user_${userId}`);
+      });
+
+      // Sala de partido para recibir eventos en vivo
       socket.on("join_match", ({ matchId }) => {
         if (matchId) socket.join(`match_${matchId}`);
       });

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { createGroup, inviteToGroup, getGroupMembers } from "../controllers/group.controller.js";
+import { getGroupLeaderboard } from "../controllers/groupPoints.controller.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
 
 export const initGroupRoutes = (app) => {
@@ -13,6 +14,9 @@ export const initGroupRoutes = (app) => {
 
   // Listar miembros de un grupo (auth required)
   router.get("/:groupId/members", verifyToken, getGroupMembers);
+
+  // Leaderboard del grupo (auth required)
+  router.get("/:groupId/leaderboard", verifyToken, getGroupLeaderboard);
 
   app.use("/api/groups", router);
 };

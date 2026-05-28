@@ -2,83 +2,305 @@
   "info": {
     "_postman_id": "0a8b6e50-0eb0-4504-8ccf-3b6283254940",
     "name": "Groups",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "52026757",
-    "_collection_link": "https://go.postman.co/collection/52026757-0a8b6e50-0eb0-4504-8ccf-3b6283254940?source=collection_link"
+    "description": "Crear grupos, invitar usuarios y ver leaderboard. Requiere {{token}} o {{adminToken}}.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Creation groups",
+      "name": "1. Crear grupo",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('Grupo creado y groupId guardado', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data).to.have.property('group');",
+              "  pm.expect(data.group).to.have.property('_id');",
+              "  pm.environment.set('groupId', data.group._id);",
+              "  console.log('Grupo creado, ID guardado:', data.group._id);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
       "request": {
         "method": "POST",
         "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OWY5MjgzNmYwMjUxZjBhOTdiMjIxOTkiLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3Nzk4ODkyOTQsImV4cCI6MTc4MDQ5NDA5NH0.c_w2SYvcemw9PAAWdhVVx4TMWhc6tXUniJghUoKPaZg",
-            "type": "text"
-          }
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n  \"name\": \"Grupo de Prueba\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
+          "raw": "{\n  \"name\": \"Los Cracks del Prode\",\n  \"description\": \"Grupo privado de amigos\",\n  \"isPublic\": false,\n  \"inviteOnly\": true\n}",
+          "options": { "raw": { "language": "json" } }
         },
         "url": {
-          "raw": "http://localhost:3000/api/groups",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "3000",
-          "path": [
-            "api",
-            "groups"
-          ]
-        }
-      },
-      "response": []
+          "raw": "{{baseUrl}}/api/groups",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "groups"]
+        },
+        "description": "Crea un grupo. inviteOnly:true significa que solo el dueño puede invitar.\nEl creador queda automáticamente como 'owner'."
+      }
     },
     {
-      "name": "member verify",
+      "name": "2. Invitar usuario registrado por userId",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Usuario invitado directo', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.invited).to.be.an('array').with.length.gt(0);",
+              "  console.log('Invitados:', JSON.stringify(data.invited));",
+              "  console.log('Salteados:', JSON.stringify(data.skipped));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userIds\": [\"{{userId}}\"]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/groups/{{groupId}}/invite",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "groups", "{{groupId}}", "invite"]
+        },
+        "description": "Invita un usuario ya registrado por su ID de MongoDB.\nPrimero hacé login y guardá {{userId}}, después ejecutá esto."
+      }
+    },
+    {
+      "name": "3. Invitar usuario por email (registrado)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Usuario agregado directamente al grupo', () => {",
+              "  const data = pm.response.json();",
+              "  const invited = data.invited[0];",
+              "  pm.expect(invited).to.have.property('email');",
+              "  // Si el usuario existe en DB, se agrega directo (sin token de invitación)",
+              "  console.log('Resultado:', JSON.stringify(data));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"emails\": [\"juan@ejemplo.com\"]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/groups/{{groupId}}/invite",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "groups", "{{groupId}}", "invite"]
+        },
+        "description": "Si el email ya tiene cuenta, se agrega como miembro directo.\nSi no tiene cuenta, se genera un token de invitación con link de registro."
+      }
+    },
+    {
+      "name": "4. Invitar usuario por email (NO registrado) → genera link",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Genera token e inviteToken guardado', () => {",
+              "  const data = pm.response.json();",
+              "  const invited = data.invited[0];",
+              "  pm.expect(invited).to.have.property('invitationToken');",
+              "  pm.expect(invited).to.have.property('link');",
+              "  pm.environment.set('inviteToken', invited.invitationToken);",
+              "  console.log('Token de invitación guardado:', invited.invitationToken);",
+              "  console.log('Link para compartir:', invited.link);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"emails\": [\"nuevo_amigo@ejemplo.com\"]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/groups/{{groupId}}/invite",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "groups", "{{groupId}}", "invite"]
+        },
+        "description": "Email que NO existe en la DB. Se crea una Invitation con token único.\nEl token se guarda en {{inviteToken}} para usar en las pruebas de Invitation."
+      }
+    },
+    {
+      "name": "5. Invitar al owner del grupo (espera skipped)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Owner saltado correctamente', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.skipped).to.be.an('array').with.length.gt(0);",
+              "  pm.expect(data.skipped[0].reason).to.equal('Es el owner');",
+              "  console.log('Correctamente salteado:', data.skipped[0].reason);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userIds\": [\"{{adminId}}\"]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/groups/{{groupId}}/invite",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "groups", "{{groupId}}", "invite"]
+        }
+      }
+    },
+    {
+      "name": "6. Invitar desde non-owner en grupo inviteOnly (espera 403)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 403 - no autorizado', () => pm.response.to.have.status(403));",
+              "pm.test('Mensaje de permiso denegado', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.message).to.include('creador');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"emails\": [\"alguien@ejemplo.com\"]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/groups/{{groupId}}/invite",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "groups", "{{groupId}}", "invite"]
+        },
+        "description": "Un miembro normal intenta invitar en un grupo inviteOnly. Debe dar 403."
+      }
+    },
+    {
+      "name": "7. Ver miembros del grupo",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Devuelve array de miembros', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data).to.be.an('array');",
+              "  console.log('Miembros del grupo:', data.length);",
+              "  data.forEach(m => console.log(' -', m.user?.first_name, m.user?.email, '| rol:', m.roleInGroup));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
       "request": {
         "method": "GET",
         "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OWY5MjgzNmYwMjUxZjBhOTdiMjIxOTkiLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3Nzk4ODkyOTQsImV4cCI6MTc4MDQ5NDA5NH0.c_w2SYvcemw9PAAWdhVVx4TMWhc6tXUniJghUoKPaZg",
-            "type": "text"
-          }
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" }
         ],
         "url": {
-          "raw": "http://localhost:3000/api/groups/6a16fb37835d1b279aa2ad12/members",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "3000",
-          "path": [
-            "api",
-            "groups",
-            "6a16fb37835d1b279aa2ad12",
-            "members"
-          ]
+          "raw": "{{baseUrl}}/api/groups/{{groupId}}/members",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "groups", "{{groupId}}", "members"]
         }
-      },
-      "response": []
+      }
+    },
+    {
+      "name": "8. Leaderboard del grupo",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Devuelve ranking', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data).to.be.an('array');",
+              "  console.log('Ranking actual:', data.length, 'posiciones');",
+              "  data.forEach((pos, i) => {",
+              "    const u = pos.user;",
+              "    console.log(' #' + (i+1), u?.first_name, u?.last_name, '| pts:', pos.points);",
+              "  });",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/groups/{{groupId}}/leaderboard",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "groups", "{{groupId}}", "leaderboard"]
+        },
+        "description": "Ranking de puntos dentro del grupo. Se actualiza cuando terminan los partidos."
+      }
     }
   ]
 }

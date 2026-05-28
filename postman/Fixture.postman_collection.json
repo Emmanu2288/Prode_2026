@@ -2,78 +2,77 @@
   "info": {
     "_postman_id": "a12e506c-1c68-4a8e-a6c3-ced5e260f560",
     "name": "Fixture",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "52026757",
-    "_collection_link": "https://go.postman.co/collection/52026757-a12e506c-1c68-4a8e-a6c3-ced5e260f560?source=collection_link"
+    "description": "Obtener partidos del Mundial desde la API de football. NOTA: El plan free tiene límite de 100 requests/día. Si devuelve [] es porque se agotó el cupo del día.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "matches",
-      "protocolProfileBehavior": {
-        "disableBodyPruning": true
-      },
-      "request": {
-        "auth": {
-          "type": "noauth"
-        },
-        "method": "GET",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5ZjhhOWIzODFmZThkYjY4OTE4NTNiNSIsImVtYWlsIjoibWFudTg4QGVqZW1wbG8uY29tIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3Nzc5MzY3MzQsImV4cCI6MTc3Nzk0MDMzNH0.c-KYMUC9BRvON8NNLfYkpQo2T3wAq-54Wrj2T7e7hp8",
-            "type": "text"
+      "name": "1. Obtener todos los partidos",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Devuelve lista de partidos', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data).to.be.an('array');",
+              "  if (data.length === 0) {",
+              "    console.warn('⚠️  Lista vacía — probablemente el rate limit del plan free fue alcanzado.');",
+              "    console.warn('   Intentá mañana o usá el plan Pro.');",
+              "  } else {",
+              "    console.log('✅ Partidos obtenidos:', data.length);",
+              "    const p = data[0];",
+              "    console.log('Primer partido:', p.fixture?.date, '|', p.teams?.home?.name, 'vs', p.teams?.away?.name);",
+              "  }",
+              "});"
+            ],
+            "type": "text/javascript"
           }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "http://localhost:3000/api/matches?league=1&season=2022&status=FT&from=2022-11-20&to=2022-12-18",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "3000",
-          "path": [
-            "api",
-            "matches"
-          ],
-          "query": [
-            {
-              "key": "league",
-              "value": "1"
-            },
-            {
-              "key": "season",
-              "value": "2022"
-            },
-            {
-              "key": "status",
-              "value": "FT"
-            },
-            {
-              "key": "from",
-              "value": "2022-11-20"
-            },
-            {
-              "key": "to",
-              "value": "2022-12-18"
-            }
-          ]
         }
-      },
-      "response": []
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/matches",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "matches"]
+        },
+        "description": "Trae los partidos del Mundial 2022 (o 2026 cuando se cambie API_SEASON en .env).\nConsume 1 request de la cuota diaria de api-sports."
+      }
+    },
+    {
+      "name": "2. Obtener partidos con filtro de temporada",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Responde correctamente', () => {",
+              "  const data = pm.response.json();",
+              "  console.log('Partidos obtenidos:', data.length);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/matches?leagueId=1&season=2022",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "matches"],
+          "query": [
+            { "key": "leagueId", "value": "1" },
+            { "key": "season", "value": "2022" }
+          ]
+        },
+        "description": "Mismo endpoint pero pasando leagueId y season como query params explícitos."
+      }
     }
   ]
 }

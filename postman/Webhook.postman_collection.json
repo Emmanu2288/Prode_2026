@@ -2,77 +2,293 @@
   "info": {
     "_postman_id": "b4878f58-0d97-498c-80ae-d1a19e8a5dbe",
     "name": "Webhook",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "52026757",
-    "_collection_link": "https://go.postman.co/collection/52026757-b4878f58-0d97-498c-80ae-d1a19e8a5dbe?source=collection_link"
+    "description": "Simulación de eventos que manda la API de football a tu servidor.\nEl pre-request script genera automáticamente la firma HMAC con {{WEBHOOK_SECRET}}.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "pruebas",
+      "name": "1. Simular GOL en un partido",
       "event": [
         {
           "listen": "prerequest",
           "script": {
             "exec": [
-              "const secret = pm.environment.get(\"WEBHOOK_SECRET\");\r",
-              "const bodyRaw = (pm.request && pm.request.body && pm.request.body.raw)\r",
-              "  || (pm.request && pm.request.toJSON && pm.request.toJSON().body && pm.request.toJSON().body.raw)\r",
-              "  || null;\r",
-              "\r",
-              "if (!secret) throw new Error(\"WEBHOOK_SECRET no está definida en el environment\");\r",
-              "if (!bodyRaw) throw new Error(\"El body no está en raw → JSON\");\r",
-              "\r",
-              "const sig = CryptoJS.HmacSHA256(bodyRaw, secret).toString(CryptoJS.enc.Hex);\r",
-              "pm.environment.set(\"WEBHOOK_SIG\", sig);\r",
-              ""
+              "// Genera la firma HMAC-SHA256 del body con el WEBHOOK_SECRET",
+              "const secret = pm.environment.get('WEBHOOK_SECRET');",
+              "const body = pm.request.body.raw;",
+              "if (!secret) { throw new Error('Falta WEBHOOK_SECRET en el environment'); }",
+              "const sig = CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex);",
+              "pm.environment.set('WEBHOOK_SIG', sig);",
+              "console.log('Firma generada:', sig);"
             ],
-            "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 - Webhook procesado', () => pm.response.to.have.status(200));",
+              "pm.test('ok: true en respuesta', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.ok).to.be.true;",
+              "  console.log('✅ Gol procesado. Socket.IO emitió match_event a sala match_855736');",
+              "});"
+            ],
+            "type": "text/javascript"
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "noauth"
-        },
         "method": "POST",
         "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
-          },
-          {
-            "key": "x-signature",
-            "value": "{{WEBHOOK_SIG}}",
-            "type": "text"
-          }
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-signature", "value": "{{WEBHOOK_SIG}}" }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"fixture\":{\"id\":12345},\"status\":\"FT\",\"goals\":{\"home\":2,\"away\":1}}\r\n",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
+          "raw": "{\"fixture\":{\"id\":855736,\"status\":{\"short\":\"1H\"}},\"goals\":{\"home\":1,\"away\":0},\"event\":{\"id\":101,\"type\":\"goal\",\"player\":{\"name\":\"Messi\"},\"team\":{\"name\":\"Argentina\"},\"time\":{\"elapsed\":23}}}",
+          "options": { "raw": { "language": "json" } }
         },
         "url": {
-          "raw": "http://localhost:3000/api/webhooks/football",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "3000",
-          "path": [
-            "api",
-            "webhooks",
-            "football"
-          ]
+          "raw": "{{baseUrl}}/api/webhooks/football",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "webhooks", "football"]
+        },
+        "description": "Simula que api-sports manda un evento de gol. El servidor lo procesa, emite por Socket.IO y guarda en ProcessedFixtures para no duplicar."
+      }
+    },
+    {
+      "name": "2. Simular TARJETA en un partido",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const secret = pm.environment.get('WEBHOOK_SECRET');",
+              "const body = pm.request.body.raw;",
+              "if (!secret) { throw new Error('Falta WEBHOOK_SECRET en el environment'); }",
+              "const sig = CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex);",
+              "pm.environment.set('WEBHOOK_SIG', sig);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Tarjeta procesada', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.ok).to.be.true;",
+              "  console.log('✅ Tarjeta procesada. Socket.IO emitió match_event.');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
         }
-      },
-      "response": []
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-signature", "value": "{{WEBHOOK_SIG}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"fixture\":{\"id\":855736,\"status\":{\"short\":\"2H\"}},\"goals\":{\"home\":1,\"away\":0},\"event\":{\"id\":202,\"type\":\"card\",\"detail\":\"Yellow Card\",\"player\":{\"name\":\"Di Maria\"},\"team\":{\"name\":\"Argentina\"},\"time\":{\"elapsed\":67}}}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/webhooks/football",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "webhooks", "football"]
+        }
+      }
+    },
+    {
+      "name": "3. Simular PARTIDO FINALIZADO (FT) → calcula puntos",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const secret = pm.environment.get('WEBHOOK_SECRET');",
+              "const body = pm.request.body.raw;",
+              "if (!secret) { throw new Error('Falta WEBHOOK_SECRET en el environment'); }",
+              "const sig = CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex);",
+              "pm.environment.set('WEBHOOK_SIG', sig);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Partido finalizado procesado', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.ok).to.be.true;",
+              "  console.log('✅ FT procesado. Se calcularon puntos para todas las predicciones del partido 855736.');",
+              "  console.log('   ▶ Ejecutá el request 3b para confirmar que los puntos se guardaron en MongoDB.');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-signature", "value": "{{WEBHOOK_SIG}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"fixture\":{\"id\":855736,\"status\":{\"short\":\"FT\"}},\"goals\":{\"home\":2,\"away\":1}}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/webhooks/football",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "webhooks", "football"]
+        },
+        "description": "Simula el evento de fin de partido. El servidor:\n1. Calcula los puntos de cada predicción del partido\n2. Actualiza GroupPoints\n3. Emite 'match_finished' por Socket.IO\n4. Marca el partido como 'scored' en ProcessedFixtures (no se reprocesa)"
+      }
+    },
+    {
+      "name": "3b. Verificar puntos guardados en la predicción",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 - endpoint de predicciones ok', () => pm.response.to.have.status(200));",
+              "",
+              "pm.test('Al menos una predicción tiene points > 0', () => {",
+              "  const data = pm.response.json();",
+              "  // Soporta respuesta como array o como { predictions: [...] }",
+              "  const preds = Array.isArray(data) ? data : (data.predictions ?? data.data ?? []);",
+              "",
+              "  pm.expect(preds.length).to.be.greaterThan(0, 'No se encontraron predicciones para este usuario');",
+              "",
+              "  const withPoints = preds.filter(p => p.points > 0);",
+              "  pm.expect(withPoints.length).to.be.greaterThan(0,",
+              "    `Ninguna predicción tiene puntos. Scores encontrados: ${preds.map(p => p.points).join(', ')}`",
+              "  );",
+              "",
+              "  withPoints.forEach(p => {",
+              "    console.log(`✅ Predicción ${p._id} | matchId: ${p.matchId ?? p.match} | predictedScore: ${p.predictedScore} | points: ${p.points}`);",
+              "  });",
+              "",
+              "  const total = preds.reduce((sum, p) => sum + (p.points || 0), 0);",
+              "  console.log(`📊 Total de puntos acumulados en todas las predicciones del usuario: ${total}`);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/predictions/user/{{userId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "predictions", "user", "{{userId}}"]
+        },
+        "description": "Verifica que el webhook FT del request 3 efectivamente guardó los puntos en la DB.\nSi 'points' sigue en 0 significa que el schema de Prediction no tiene el campo 'points' y Mongoose strict mode lo está descartando."
+      }
+    },
+    {
+      "name": "4. Reenviar mismo FT (espera que NO se reprocese)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const secret = pm.environment.get('WEBHOOK_SECRET');",
+              "const body = pm.request.body.raw;",
+              "const sig = CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex);",
+              "pm.environment.set('WEBHOOK_SIG', sig);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200 - idempotente', () => pm.response.to.have.status(200));",
+              "pm.test('No duplicó el procesamiento', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.ok).to.be.true;",
+              "  console.log('✅ El servidor respondió OK pero no reprocesó (ProcessedFixture ya existía).');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-signature", "value": "{{WEBHOOK_SIG}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"fixture\":{\"id\":855736,\"status\":{\"short\":\"FT\"}},\"goals\":{\"home\":2,\"away\":1}}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/webhooks/football",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "webhooks", "football"]
+        },
+        "description": "El mismo FT del request 3. Verifica que ProcessedFixture evita el doble procesamiento."
+      }
+    },
+    {
+      "name": "5. Webhook con firma inválida (espera 401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 401 - firma inválida rechazada', () => pm.response.to.have.status(401));",
+              "pm.test('Mensaje de firma inválida', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.message).to.include('signature');",
+              "  console.log('✅ Seguridad OK: webhook falso rechazado.');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "x-signature", "value": "firma_falsa_que_no_va_a_pasar" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"fixture\":{\"id\":855736,\"status\":{\"short\":\"FT\"}},\"goals\":{\"home\":2,\"away\":1}}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/webhooks/football",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "webhooks", "football"]
+        },
+        "description": "Verifica que el servidor rechaza webhooks con firma incorrecta."
+      }
     }
   ]
 }

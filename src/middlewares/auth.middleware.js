@@ -12,9 +12,9 @@ export const verifyToken = (req, res, next) => {
       token = authHeader.split(" ")[1];
     }
 
-    // 2) Fallback a cookie 'token'
-    if (!token && req.cookies && req.cookies.token) {
-      token = req.cookies.token;
+    // 2) Fallback a cookie 'authToken' (o 'token' por retrocompatibilidad)
+    if (!token && req.cookies) {
+      token = req.cookies.authToken || req.cookies.token || null;
     }
 
     if (!token) {

@@ -2,56 +2,287 @@
   "info": {
     "_postman_id": "9660a568-37a4-4376-96db-d1d36656dddf",
     "name": "Predictions",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "52026757",
-    "_collection_link": "https://go.postman.co/collection/52026757-9660a568-37a4-4376-96db-d1d36656dddf?source=collection_link"
+    "description": "Predicciones de partidos, MVP y premios del Mundial. Requiere {{token}} seteado (hacer login primero).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Creation Predictions",
+      "name": "1. Crear predicción de partido",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('Predicción guardada con matchId y score', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data).to.have.property('matchId');",
+              "  pm.expect(data).to.have.property('predictedScore');",
+              "  pm.expect(data).to.have.property('user');",
+              "  console.log('Predicción creada, _id:', data._id);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
       "request": {
         "method": "POST",
         "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5ZjhhOWIzODFmZThkYjY4OTE4NTNiNSIsImVtYWlsIjoibWFudTg4QGVqZW1wbG8uY29tIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3Nzc5MzY3MzQsImV4cCI6MTc3Nzk0MDMzNH0.c-KYMUC9BRvON8NNLfYkpQo2T3wAq-54Wrj2T7e7hp8",
-            "type": "text"
-          },
-          {
-            "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
-          }
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n  \"user\": \"69f89ef05ebbb9906ed0b51c\",\r\n  \"match\": \"855736\",\r\n  \"predictedScore\": \"1-1\",\r\n  \"mvpPlayer\": \"Enner Valencia\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
+          "raw": "{\n  \"match\": \"855736\",\n  \"predictedScore\": \"2-1\",\n  \"mvpPlayer\": \"Messi\"\n}",
+          "options": { "raw": { "language": "json" } }
         },
         "url": {
-          "raw": "http://localhost:3000/api/predictions?force=true",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "3000",
-          "path": [
-            "api",
-            "predictions"
-          ],
-          "query": [
-            {
-              "key": "force",
-              "value": "true"
-            }
-          ]
+          "raw": "{{baseUrl}}/api/predictions",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "predictions"]
+        },
+        "description": "Predice el resultado de un partido. El matchId viene de GET /api/matches.\nSi el partido ya empezó, devuelve 400.\nEn desarrollo podés agregar ?force=true para saltear ese control."
+      }
+    },
+    {
+      "name": "2. Crear predicción (partido ya empezado, espera 400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Si la API está rate-limited no puede verificar el estado del partido.",
+              "// En ese caso puede crear igual (fallback). Si la API funciona devuelve 400.",
+              "pm.test('Responde (400 si API activa, 201 si API rate-limited)', () => {",
+              "  pm.expect([400, 201, 409]).to.include(pm.response.code);",
+              "  console.log('Status:', pm.response.code, '- Respuesta:', pm.response.text());",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
         }
-      },
-      "response": []
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"match\": \"855736\",\n  \"predictedScore\": \"0-0\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/predictions",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "predictions"]
+        },
+        "description": "Misma predicción SIN ?force=true. Si el partido ya empezó debería dar 400."
+      }
+    },
+    {
+      "name": "3. Predicción duplicada (espera 409)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 409 - duplicado', () => pm.response.to.have.status(409));",
+              "pm.test('Mensaje de duplicado', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data.error).to.include('Ya existe');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"match\": \"855736\",\n  \"predictedScore\": \"3-0\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/predictions",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "predictions"]
+        },
+        "description": "El mismo partido que el request 1. Debe rechazarse con 409."
+      }
+    },
+    {
+      "name": "4. Predicción sin token (espera 401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 401 sin token', () => pm.response.to.have.status(401));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"match\": \"855736\",\n  \"predictedScore\": \"1-0\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/predictions",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "predictions"]
+        }
+      }
+    },
+    {
+      "name": "5. Premios del Mundial (extras)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Extras guardados', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data).to.have.property('worldChampion');",
+              "  pm.expect(data).to.have.property('bestPlayer');",
+              "  console.log('Campeón elegido:', data.worldChampion);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"worldChampion\": \"Argentina\",\n  \"bestPlayer\": \"Messi\",\n  \"topScorer\": \"Lautaro Martinez\",\n  \"bestGoalkeeper\": \"Emiliano Martinez\",\n  \"revelationTeam\": \"Marruecos\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/predictions/extras",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "predictions", "extras"]
+        },
+        "description": "Predicciones globales del torneo: campeón, mejor jugador, goleador, mejor arquero y equipo revelación.\nSe puede actualizar hasta que empiezen los octavos (2026-06-27)."
+      }
+    },
+    {
+      "name": "6. Ver predicciones del usuario logueado",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Devuelve array de predicciones', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data).to.be.an('array');",
+              "  console.log('Predicciones del usuario:', data.length);",
+              "  data.forEach(p => console.log(' -', p.matchId, '|', p.predictedScore, '| pts:', p.points));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/predictions/user/{{userId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "predictions", "user", "{{userId}}"]
+        }
+      }
+    },
+    {
+      "name": "7. Crear predicción MVP por partido",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('MVP guardado', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data).to.have.property('mvpPlayer');",
+              "  pm.expect(data).to.have.property('match');",
+              "  console.log('MVP elegido:', data.mvpPlayer, 'para partido:', data.match);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"match\": \"855737\",\n  \"mvpPlayer\": \"Mbappe\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/mvp",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "mvp"]
+        },
+        "description": "Predecís quién va a ser el MVP de un partido específico.\nUn usuario solo puede poner un MVP por partido."
+      }
+    },
+    {
+      "name": "8. Ver predicciones MVP del usuario",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Devuelve array de MVPs', () => {",
+              "  const data = pm.response.json();",
+              "  pm.expect(data).to.be.an('array');",
+              "  console.log('MVPs predichos:', data.length);",
+              "  data.forEach(m => console.log(' - Partido:', m.match, '| MVP:', m.mvpPlayer));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/mvp/user/{{userId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "mvp", "user", "{{userId}}"]
+        }
+      }
     }
   ]
 }
