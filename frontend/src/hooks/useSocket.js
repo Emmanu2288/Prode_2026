@@ -14,7 +14,8 @@ const useSocket = () => {
     if (!token || !user) return;
 
     if (!socketInstance) {
-      socketInstance = io("/", {
+      const socketUrl = import.meta.env.VITE_API_URL || "/";
+      socketInstance = io(socketUrl, {
         auth: { token },
         withCredentials: true,
       });

@@ -4,6 +4,7 @@ import { initMonitoring, captureException, slackAlert } from "./utils/alerts.js"
 initMonitoring();
 
 import express from 'express';
+import cors from 'cors';
 import http from 'http';
 import { Server as IOServer } from 'socket.io';
 import cookieParser from 'cookie-parser';
@@ -15,7 +16,6 @@ import connectDB from './config/db.js';
 // Importamos inicializadores de rutas
 import { initMatchRoutes } from './routes/match.routes.js';
 import { initPredictionRoutes } from './routes/prediction.routes.js';
-import { initMvpRoutes } from './routes/mvpPrediction.routes.js';
 import { initAuthRoutes } from './routes/auth.routes.js';
 import { initUserRoutes } from './routes/user.routes.js';
 import { initGroupRoutes } from "./routes/group.routes.js";
@@ -32,6 +32,21 @@ const start = async () => {
     await connectDB();
 
     const app = express();
+
+    // CORS — permite peticiones desde el frontend
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || "http://localhost:5173",
+      "http://localhost:5173",
+      "http://localhost:3000",
+    ].filter(Boolean);
+
+    app.use(cors({
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+        return callback(new Error(`CORS bloqueado para: ${origin}`));
+      },
+      credentials: true,
+    }));
 
     // Guardar raw body para verificación HMAC en webhooks
     app.use(express.json({
@@ -67,7 +82,6 @@ const start = async () => {
     // Inicializamos rutas normales
     initMatchRoutes(app);
     initPredictionRoutes(app);
-    initMvpRoutes(app);
     initAuthRoutes(app);
     initUserRoutes(app);
     initGroupRoutes(app);

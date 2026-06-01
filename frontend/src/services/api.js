@@ -1,8 +1,14 @@
 import axios from "axios";
 
+// En desarrollo usa el proxy de Vite (/api → localhost:3000)
+// En producción usa la URL del backend deployado
+const BASE_URL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : "/api";
+
 const api = axios.create({
-  baseURL: "/api",
-  withCredentials: true, // envía la cookie authToken automáticamente
+  baseURL: BASE_URL,
+  withCredentials: true,
 });
 
 // Interceptor: agrega el token JWT si existe en localStorage

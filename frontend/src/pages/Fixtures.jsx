@@ -5,7 +5,7 @@ import MatchCard from "../components/fixtures/MatchCard";
 import RoundFilter from "../components/fixtures/RoundFilter";
 
 const Fixtures = () => {
-  const { matches: initialMatches, groupedByRound: initialGrouped, rounds, nextRound, loading, error } = useMatches();
+  const { matches: initialMatches, rounds, nextRound, loading, error } = useMatches();
   const liveMatches = useLiveMatches(initialMatches);
 
   // Reagrupar con datos live
