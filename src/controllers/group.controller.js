@@ -1,6 +1,88 @@
 import Group from "../models/Group.js";
 import Membership from "../models/Membership.js";
+import Prediction from "../models/Prediction.js";
 import { inviteToGroup as inviteToGroupController } from "./invitation.controller.js";
+
+// Eliminar grupo (solo owner)
+export const deleteGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ message: "Grupo no encontrado" });
+    if (group.owner.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Solo el creador puede eliminar el grupo" });
+    }
+    await Group.findByIdAndDelete(groupId);
+    await Membership.deleteMany({ group: groupId });
+    return res.json({ message: "Grupo eliminado correctamente" });
+  } catch (err) {
+    console.error("deleteGroup error:", err);
+    return res.status(500).json({ message: "Error al eliminar el grupo" });
+  }
+};
+
+// Predicciones de todos los miembros del grupo agrupadas por matchId
+export const getGroupPredictions = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const memberships = await Membership.find({ group: groupId }).lean();
+    const userIds = memberships.map((m) => m.user);
+
+    const predictions = await Prediction.find({
+      user: { $in: userIds },
+      matchId: { $exists: true },
+      predictedScore: { $exists: true },
+    })
+      .populate("user", "first_name last_name")
+      .lean();
+
+    // Agrupar por matchId
+    const byMatch = {};
+    for (const pred of predictions) {
+      if (!byMatch[pred.matchId]) byMatch[pred.matchId] = [];
+      byMatch[pred.matchId].push({
+        userId:         pred.user?._id,
+        userName:       `${pred.user?.first_name} ${pred.user?.last_name}`,
+        predictedScore: pred.predictedScore,
+        mvpPlayer:      pred.mvpPlayer,
+        points:         pred.points ?? 0,
+      });
+    }
+
+    return res.json(byMatch);
+  } catch (err) {
+    console.error("getGroupPredictions error:", err);
+    return res.status(500).json({ message: "Error al obtener predicciones del grupo" });
+  }
+};
+
+// Listar grupos donde el usuario es miembro
+export const getMyGroups = async (req, res) => {
+  try {
+    const memberships = await Membership.find({ user: req.user.id })
+      .populate("group")
+      .lean();
+    const groups = memberships
+      .filter((m) => m.group)
+      .map((m) => ({ ...m.group, roleInGroup: m.roleInGroup }));
+    return res.json(groups);
+  } catch (err) {
+    console.error("getMyGroups error:", err);
+    return res.status(500).json({ message: "Error al obtener grupos" });
+  }
+};
+
+// Detalle de un grupo
+export const getGroupById = async (req, res) => {
+  try {
+    const group = await Group.findById(req.params.groupId).populate("owner", "first_name last_name email");
+    if (!group) return res.status(404).json({ message: "Grupo no encontrado" });
+    return res.json(group);
+  } catch (err) {
+    console.error("getGroupById error:", err);
+    return res.status(500).json({ message: "Error al obtener el grupo" });
+  }
+};
 
 export const createGroup = async (req, res) => {
   try {

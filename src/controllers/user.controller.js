@@ -2,6 +2,51 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 
 /**
+ * Buscar usuarios por nombre o email (cualquier usuario autenticado)
+ * Excluye al propio usuario de los resultados
+ */
+export const searchUsers = async (req, res) => {
+  try {
+    const { q = "" } = req.query;
+    if (q.trim().length < 2) {
+      return res.json([]);
+    }
+    const regex = new RegExp(q.trim(), "i");
+    const users = await User.find({
+      _id: { $ne: req.user.id },
+      $or: [
+        { first_name: regex },
+        { last_name: regex },
+        { email: regex },
+      ],
+    })
+      .select("_id first_name last_name email")
+      .limit(20)
+      .lean();
+    return res.json(users);
+  } catch (err) {
+    console.error("searchUsers error:", err);
+    return res.status(500).json({ message: "Error al buscar usuarios" });
+  }
+};
+
+/**
+ * Leaderboard global — todos los usuarios ordenados por puntos
+ */
+export const getLeaderboard = async (req, res) => {
+  try {
+    const users = await User.find()
+      .select("first_name last_name totalPoints googleId")
+      .sort({ totalPoints: -1 })
+      .lean();
+    return res.json(users);
+  } catch (err) {
+    console.error("getLeaderboard error:", err);
+    return res.status(500).json({ message: "Error al obtener el leaderboard" });
+  }
+};
+
+/**
  * Listar todos los usuarios (solo admin)
  */
 export const listUsers = async (req, res) => {

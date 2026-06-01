@@ -1,0 +1,25 @@
+import { Router } from "express";
+import { verifyToken } from "../middlewares/auth.middleware.js";
+import { roleMiddleware } from "../middlewares/role.middleware.js";
+import {
+  getAdminUsers,
+  getAdminGroups,
+  getTournamentData,
+  processTournamentAwards,
+  getFinishedMatches,
+  setManualMvp,
+} from "../controllers/admin.controller.js";
+
+export const initAdminRoutes = (app) => {
+  const router = Router();
+  const admin = [verifyToken, roleMiddleware(["admin"])];
+
+  router.get("/users",               ...admin, getAdminUsers);
+  router.get("/groups",              ...admin, getAdminGroups);
+  router.get("/tournament-data",     ...admin, getTournamentData);
+  router.post("/tournament-awards",  ...admin, processTournamentAwards);
+  router.get("/finished-matches",    ...admin, getFinishedMatches);
+  router.post("/mvp/:fixtureId",     ...admin, setManualMvp);
+
+  app.use("/api/admin", router);
+};

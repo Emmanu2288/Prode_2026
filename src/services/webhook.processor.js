@@ -1,7 +1,58 @@
 import mongoose from "mongoose";
+import axios from "axios";
 import ProcessedFixture from "../models/ProcessedFixture.js";
 import Prediction from "../models/Prediction.js";
 import { calculatePointsFinal, applyFinalPointsToPrediction, applyTournamentAwardPoints } from "./points.service.js";
+
+const API_URL = "https://v3.football.api-sports.io";
+const API_KEY = process.env.FOOTBALL_API_KEY;
+
+/**
+ * Obtiene el jugador con mayor rating del partido desde api-football.
+ * Devuelve el nombre del jugador (string) o null si no hay datos.
+ */
+const fetchTopRatedPlayer = async (matchId) => {
+  try {
+    const res = await axios.get(`${API_URL}/fixtures`, {
+      params: { id: matchId },
+      headers: { "x-apisports-key": API_KEY },
+      timeout: 8000,
+    });
+    const fixture = res.data?.response?.[0];
+    if (!fixture?.players) return null;
+
+    let topPlayer = null;
+    let topRating = 0;
+
+    for (const team of fixture.players) {
+      for (const entry of team.players) {
+        const rating = parseFloat(entry?.statistics?.[0]?.games?.rating ?? 0);
+        if (rating > topRating) {
+          topRating = rating;
+          topPlayer = entry?.player?.name ?? null;
+        }
+      }
+    }
+
+    return topPlayer;
+  } catch (err) {
+    console.warn("fetchTopRatedPlayer error:", err.message);
+    return null;
+  }
+};
+
+/**
+ * Compara el nombre predicho con el nombre real (tolerante a apellidos, parciales).
+ * Ej: "Messi" === "Lionel Messi" → true
+ */
+export const mvpNamesMatch = (predicted, actual) => {
+  if (!predicted || !actual) return false;
+  const normalize = (s) =>
+    s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+  const p = normalize(predicted);
+  const a = normalize(actual);
+  return a.includes(p) || p.includes(a);
+};
 
 /**
  * processWebhookEvent
@@ -88,8 +139,11 @@ export const processWebhookEvent = async (payload) => {
 
       // Obtener resultado final
       const finalGoals = fixture?.goals ?? fixture?.score ?? payload?.goals ?? { home: 0, away: 0 };
-      // Obtener finalMvp si viene en payload (campo puede variar según proveedor)
-      const finalMvp = fixture?.mvp ?? payload?.mvp ?? null;
+
+      // Obtener MVP: primero del payload, sino buscar el jugador con mayor rating en la API
+      const payloadMvp = fixture?.mvp ?? payload?.mvp ?? null;
+      const finalMvp = payloadMvp ?? await fetchTopRatedPlayer(matchId);
+      if (finalMvp) console.log(`processWebhookEvent: MVP del partido ${matchId}: ${finalMvp}`);
 
       // Construir query segura para buscar predicciones sin provocar CastError
       let preds = [];

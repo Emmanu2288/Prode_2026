@@ -1,22 +1,34 @@
 import { Router } from "express";
-import { createGroup, inviteToGroup, getGroupMembers } from "../controllers/group.controller.js";
+import { createGroup, inviteToGroup, getGroupMembers, getMyGroups, getGroupById, getGroupPredictions, deleteGroup } from "../controllers/group.controller.js";
 import { getGroupLeaderboard } from "../controllers/groupPoints.controller.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
 
 export const initGroupRoutes = (app) => {
   const router = Router();
 
-  // Crear grupo (auth required)
+  // Mis grupos (grupos donde soy miembro)
+  router.get("/my", verifyToken, getMyGroups);
+
+  // Crear grupo
   router.post("/", verifyToken, createGroup);
 
-  // Invitar a un grupo (auth required)
+  // Detalle de un grupo
+  router.get("/:groupId", verifyToken, getGroupById);
+
+  // Invitar a un grupo
   router.post("/:groupId/invite", verifyToken, inviteToGroup);
 
-  // Listar miembros de un grupo (auth required)
+  // Listar miembros de un grupo
   router.get("/:groupId/members", verifyToken, getGroupMembers);
 
-  // Leaderboard del grupo (auth required)
+  // Leaderboard del grupo
   router.get("/:groupId/leaderboard", verifyToken, getGroupLeaderboard);
+
+  // Predicciones de todos los miembros del grupo, agrupadas por partido
+  router.get("/:groupId/predictions", verifyToken, getGroupPredictions);
+
+  // Eliminar grupo (solo owner)
+  router.delete("/:groupId", verifyToken, deleteGroup);
 
   app.use("/api/groups", router);
 };

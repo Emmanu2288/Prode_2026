@@ -14,12 +14,10 @@ const predictionSchema = new Schema({
   worldChampion: { type: String },
   bestPlayer: { type: String },
   topScorer: { type: String },
-  bestGoalkeeper: { type: String },
-  revelationTeam: { type: String }
+  bestGoalkeeper: { type: String }
 }, { timestamps: true });
 
-// Evita duplicados user+match (prioriza match si existe, sino matchId)
-predictionSchema.index({ user: 1, match: 1 }, { unique: true, partialFilterExpression: { match: { $exists: true } } });
-predictionSchema.index({ user: 1, matchId: 1 }, { unique: true, partialFilterExpression: { matchId: { $exists: true } } });
+// Índice único por matchId (string externo de api-football)
+predictionSchema.index({ user: 1, matchId: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model("Prediction", predictionSchema);

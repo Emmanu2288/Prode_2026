@@ -34,10 +34,14 @@ export const calculatePointsFinal = (prediction, finalGoals, finalMvp) => {
       if (predDiff === finalDiff) points += 1;
     }
 
-    // MVP (campo mvpPlayer en la predicción, finalMvp viene del webhook del admin)
+    // MVP — comparación tolerante (apellido, parcial, sin tildes)
     const predMvp = prediction.mvpPlayer ?? prediction.mvp ?? null;
-    if (predMvp && finalMvp && String(predMvp).toLowerCase() === String(finalMvp).toLowerCase()) {
-      points += 2;
+    if (predMvp && finalMvp) {
+      const normalize = (s) =>
+        String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+      const p = normalize(predMvp);
+      const a = normalize(finalMvp);
+      if (a.includes(p) || p.includes(a)) points += 2;
     }
 
     return points;

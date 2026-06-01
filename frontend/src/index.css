@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ─── Tema claro ─────────────────────────────────────────── */
+:root {
+  --bg-main:        #eef2f7;
+  --bg-card:        #ffffff;
+  --bg-card-hover:  #f8fafc;
+  --border:         #e8edf2;
+  --text-primary:   #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted:     #9ca3af;
+  --navbar-bg:      #166534;
+}
+
+/* ─── Tema oscuro ────────────────────────────────────────── */
+html.dark {
+  --bg-main:        #0f1923;
+  --bg-card:        #1a2535;
+  --bg-card-hover:  #1e2d3d;
+  --border:         #2d3f50;
+  --text-primary:   #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted:     #64748b;
+  --navbar-bg:      #0d2b1a;
+}
+
+body {
+  font-family: 'Barlow', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  transition: background 0.3s, color 0.3s;
+}
+
+/* Cards genéricas */
+.card {
+  background: var(--bg-card);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+/* Clases utilitarias para dark mode */
+.bg-card        { background: var(--bg-card) !important; }
+.bg-main        { background: var(--bg-main) !important; }
+.border-theme   { border-color: var(--border) !important; }
+.text-primary   { color: var(--text-primary) !important; }
+.text-secondary { color: var(--text-secondary) !important; }
+.text-muted     { color: var(--text-muted) !important; }
+
+.font-football {
+  font-family: 'Bebas Neue', 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.05em;
+}
+
+.font-condensed {
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+}
+
+/* ─── Dark mode: overrides globales de Tailwind ─────────── */
+html.dark .text-gray-900,
+html.dark .text-gray-800,
+html.dark .text-gray-700 { color: #f1f5f9 !important; }
+
+html.dark .text-gray-600,
+html.dark .text-gray-500 { color: #94a3b8 !important; }
+
+html.dark .text-gray-400 { color: #64748b !important; }
+
+html.dark .border-gray-100,
+html.dark .border-gray-200,
+html.dark .border-gray-300 { border-color: #2d3f50 !important; }
+
+html.dark .bg-gray-50  { background: #1e2d3d !important; }
+html.dark .bg-gray-100 { background: #243447 !important; }
+
+html.dark .bg-orange-50  { background: #2d1f0f !important; }
+html.dark .border-orange-100,
+html.dark .border-orange-200 { border-color: #7c3a10 !important; }
+
+html.dark .bg-green-50   { background: #0d2b1a !important; }
+html.dark .border-green-100,
+html.dark .border-green-200 { border-color: #166534 !important; }
+
+html.dark .bg-purple-50  { background: #1e0a3c !important; }
+html.dark .border-purple-100 { border-color: #5b21b6 !important; }
+
+html.dark .bg-blue-50    { background: #0f1e3d !important; }
+html.dark .border-blue-200 { border-color: #1d4ed8 !important; }
+
+html.dark .bg-yellow-50  { background: #2d2200 !important; }
+
+/* Leaderboard cards — mantener contraste con colores metálicos */
+html.dark .bg-yellow-50.border-yellow-300 { background: #2d2a00 !important; border-color: #a16207 !important; }
+html.dark .bg-gray-50.border-gray-300     { background: #1e2a38 !important; border-color: #475569 !important; }
+html.dark .bg-orange-50.border-orange-200 { background: #2d1500 !important; border-color: #9a3412 !important; }
+
+html.dark .text-orange-700,
+html.dark .text-orange-500 { color: #fb923c !important; }
+
+html.dark .text-green-700  { color: #4ade80 !important; }
+html.dark .text-green-600  { color: #4ade80 !important; }
+html.dark .text-purple-700,
+html.dark .text-purple-500 { color: #c084fc !important; }
+html.dark .text-blue-700   { color: #60a5fa !important; }
+
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background: #1a2535 !important;
+  border-color: #2d3f50 !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark input::placeholder { color: #64748b !important; }
+
+/* ─── Responsive mobile ──────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Layout padding */
+  main { padding: 1rem 3% !important; }
+
+  /* Heroes: texto más pequeño */
+  .hero-title { font-size: 1.75rem !important; }
+
+  /* Stat cards: altura menor en móvil */
+  [style*="minHeight: \"200px\""] { min-height: 130px !important; }
+
+  /* NewPrediction: form más ancho en móvil */
+  [style*="maxWidth: \"520px\""] { max-width: 100% !important; }
+
+  /* Extras: form más ancho en móvil */
+  [style*="maxWidth: \"680px\""] { max-width: 100% !important; }
+
+  /* Profile: full width en móvil */
+  [style*="maxWidth: \"560px\""] { max-width: 100% !important; }
+
+  /* Leaderboard hero: ocultar texto largo */
+  .leaderboard-subtitle { display: none; }
+}

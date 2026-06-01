@@ -3,7 +3,7 @@ import axios from "axios";
 const API_URL = "https://v3.football.api-sports.io";
 const API_KEY = process.env.FOOTBALL_API_KEY;
 const WORLD_CUP_LEAGUE_ID = process.env.WORLD_CUP_LEAGUE_ID ? Number(process.env.WORLD_CUP_LEAGUE_ID) : 1;
-const WORLD_CUP_SEASON = process.env.API_SEASON || 2022;
+const WORLD_CUP_SEASON = process.env.API_SEASON || 2026;
 
 export const getWorldCup2026Matches = async (opts = {}) => {
   if (!API_KEY) throw new Error("FOOTBALL_API_KEY no configurada");

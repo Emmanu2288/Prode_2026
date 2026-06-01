@@ -25,12 +25,12 @@ export const createPrediction = async (req, res) => {
         timeout: 5000
       });
 
-      const fixture = response.data?.response?.[0];
-      if (fixture) {
-        externalMatchId = String(fixture?.fixture?.id ?? fixture?.id ?? match);
-        const status = fixture.status?.short;
+      const fixtureData = response.data?.response?.[0];
+      if (fixtureData) {
+        externalMatchId = String(fixtureData?.fixture?.id ?? match);
+        const status = fixtureData?.fixture?.status?.short;
         const allowForce = process.env.NODE_ENV !== "production" && req.query?.force === "true";
-        if (!allowForce && status !== "NS") {
+        if (!allowForce && status && status !== "NS") {
           statusBlocked = true;
         }
       }
@@ -43,29 +43,74 @@ export const createPrediction = async (req, res) => {
       return res.status(400).json({ error: "El partido ya comenzó, no se puede modificar la apuesta." });
     }
 
-    // Comprobación previa para evitar duplicados (por user + matchId)
-    const already = await Prediction.findOne({ user: userId, matchId: externalMatchId });
-    if (already) {
-      return res.status(409).json({ error: "Ya existe una predicción para este usuario y partido." });
+    // Buscar predicción existente
+    const existing = await Prediction.findOne({ user: userId, matchId: externalMatchId });
+
+    if (existing) {
+      // Ya existe → actualizar
+      existing.predictedScore = predictedScore;
+      if (mvpPlayer !== undefined) existing.mvpPlayer = mvpPlayer;
+      await existing.save();
+      return res.status(200).json(existing);
     }
 
-    // Crear la predicción usando matchId (string) para mantener compatibilidad con webhooks/reconciler
+    // No existe → crear nueva
     const prediction = await Prediction.create({
       user: userId,
       matchId: externalMatchId,
       predictedScore,
-      mvpPlayer
+      mvpPlayer,
     });
 
     return res.status(201).json(prediction);
   } catch (err) {
-    // Manejo explícito de error de índice único (duplicado)
-    if (err && err.code === 11000) {
-      return res.status(409).json({ error: "Ya existe una predicción para este usuario y partido." });
-    }
-
     console.error("createPrediction error:", err);
     return res.status(500).json({ error: "Error interno al crear la predicción." });
+  }
+};
+
+// Actualizar predicción existente (solo si el partido no empezó)
+export const updatePrediction = async (req, res) => {
+  try {
+    const { matchId } = req.params;
+    const { predictedScore, mvpPlayer } = req.body;
+    const userId = req.user.id;
+
+    // Verificar estado del partido
+    try {
+      const response = await axios.get(`${API_URL}/fixtures`, {
+        params: { id: matchId },
+        headers: { "x-apisports-key": API_KEY },
+        timeout: 5000
+      });
+      const fixtureData = response.data?.response?.[0];
+      if (fixtureData) {
+        const status = fixtureData?.fixture?.status?.short;
+        if (status && status !== "NS") {
+          return res.status(400).json({ error: "El partido ya comenzó, no se puede modificar el pronóstico." });
+        }
+      }
+    } catch (apiErr) {
+      console.warn("API no disponible al actualizar predicción:", apiErr.message);
+    }
+
+    const updateFields = { predictedScore };
+    if (mvpPlayer !== undefined) updateFields.mvpPlayer = mvpPlayer;
+
+    const prediction = await Prediction.findOneAndUpdate(
+      { user: userId, matchId: String(matchId) },
+      updateFields,
+      { new: true }
+    );
+
+    if (!prediction) {
+      return res.status(404).json({ error: "Pronóstico no encontrado." });
+    }
+
+    return res.json(prediction);
+  } catch (err) {
+    console.error("updatePrediction error:", err);
+    return res.status(500).json({ error: "Error al actualizar el pronóstico." });
   }
 };
 
@@ -91,38 +136,63 @@ export const assignDefaultPrediction = async (matchId, userId) => {
   }
 };
 
-// Guardar extras del Mundial (campeón, mejor jugador, etc.)
-export const updateExtras = async (req, res) => {
+// Obtener extras del usuario autenticado
+export const getExtras = async (req, res) => {
   try {
-    const now = new Date();
-    const knockoutStart = new Date("2026-06-27T00:00:00"); // fecha del primer partido de octavos
-
-    if (now >= knockoutStart) {
-      return res.status(400).json({ error: "Ya comenzaron los octavos de final, no se pueden modificar las apuestas globales." });
-    }
-
-    const prediction = await Prediction.findOneAndUpdate(
-      { user: req.user.id },
-      {
-        worldChampion: req.body.worldChampion,
-        bestPlayer: req.body.bestPlayer,
-        topScorer: req.body.topScorer,
-        bestGoalkeeper: req.body.bestGoalkeeper,
-        revelationTeam: req.body.revelationTeam
-      },
-      { new: true, upsert: true }
-    );
-
-    res.json(prediction);
+    const extras = await Prediction.findOne({
+      user: req.user.id,
+      matchId: { $exists: false },
+      predictedScore: { $exists: false }
+    }).select("worldChampion bestPlayer topScorer bestGoalkeeper revelationTeam");
+    res.json(extras || {});
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Listar pronósticos de un usuario
+// Guardar/actualizar extras del Mundial (campeón, mejor jugador, etc.)
+export const updateExtras = async (req, res) => {
+  try {
+    const now = new Date();
+    const knockoutStart = new Date("2026-06-27T00:00:00");
+
+    if (now >= knockoutStart) {
+      return res.status(400).json({ error: "Ya comenzaron los octavos de final, no se pueden modificar las apuestas globales." });
+    }
+
+    const { worldChampion, bestPlayer, topScorer, bestGoalkeeper } = req.body;
+
+    // Documento exclusivo para extras (sin matchId ni predictedScore)
+    const extras = await Prediction.findOneAndUpdate(
+      {
+        user: req.user.id,
+        matchId: { $exists: false },
+        predictedScore: { $exists: false }
+      },
+      { worldChampion, bestPlayer, topScorer, bestGoalkeeper },
+      { new: true, upsert: true }
+    );
+
+    res.json(extras);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Listar pronósticos del usuario autenticado
+export const getMyPredictions = async (req, res) => {
+  try {
+    const predictions = await Prediction.find({ user: req.user.id }).sort({ createdAt: -1 });
+    res.json(predictions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Listar pronósticos de un usuario por ID
 export const getUserPredictions = async (req, res) => {
   try {
-    const predictions = await Prediction.find({ user: req.params.userId }).populate("match");
+    const predictions = await Prediction.find({ user: req.params.userId }).sort({ createdAt: -1 });
     res.json(predictions);
   } catch (err) {
     res.status(500).json({ error: err.message });
