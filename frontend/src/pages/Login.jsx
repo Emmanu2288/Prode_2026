@@ -75,7 +75,7 @@ const Login = () => {
 
         <div className="mt-4 text-center">
           <a
-            href="/api/auth/google"
+            href={`${import.meta.env.VITE_API_URL || ''}/api/auth/google`}
             className="flex items-center justify-center gap-2 border border-gray-300 rounded-lg px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors w-full"
           >
             <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
