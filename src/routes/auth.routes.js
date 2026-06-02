@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser, loginUser, logoutUser, getProfile, getSession } from "../controllers/auth.controller.js";
+import { registerUser, loginUser, logoutUser, getProfile, getSession, forgotPassword, resetPassword } from "../controllers/auth.controller.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
 import passport from "../config/passport.js";
 import jwt from "jsonwebtoken";
@@ -9,6 +9,8 @@ export const initAuthRoutes = (app) => {
 
   router.post("/register", registerUser);
   router.post("/login", loginUser);
+  router.post("/forgot-password", forgotPassword);
+  router.post("/reset-password", resetPassword);
   router.post("/logout", logoutUser);
   router.get("/profile", verifyToken, getProfile);
   router.get("/session", verifyToken, getSession);

@@ -8,6 +8,8 @@ import { ProtectedRoute, AdminRoute } from "./components/layout/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AuthCallback from "./pages/AuthCallback";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Fixtures from "./pages/Fixtures";
 import FixtureDetail from "./pages/FixtureDetail";
@@ -38,6 +40,8 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Rutas protegidas — requieren login */}
         <Route element={<ProtectedRoute />}>

@@ -1,7 +1,11 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import { Resend } from "resend";
 import Invitation from "../models/Invitation.js";
 import Membership from "../models/Membership.js";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const COOKIE_NAME = "authToken";
 
@@ -169,6 +173,83 @@ export const getProfile = async (req, res) => {
  * Verifica si hay una sesión activa (Passport session o JWT en cookie/header).
  * Útil para que el frontend sepa si el usuario sigue logueado al refrescar la página.
  */
+/**
+ * POST /api/auth/forgot-password
+ * Genera token de reseteo y envía email con Resend
+ */
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email requerido" });
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    // Siempre responder OK para no revelar si el email existe
+    if (!user || user.googleId) {
+      return res.json({ message: "Si el email existe, recibirás un link en minutos." });
+    }
+
+    // Generar token seguro
+    const token = crypto.randomBytes(32).toString("hex");
+    user.passwordResetToken   = token;
+    user.passwordResetExpires = new Date(Date.now() + 1000 * 60 * 60); // 1 hora
+    await user.save();
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+
+    await resend.emails.send({
+      from:    "Prode 2026 <onboarding@resend.dev>",
+      to:      user.email,
+      subject: "🔑 Recuperar contraseña — Prode 2026",
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:2rem">
+          <h2 style="color:#166534">⚽ Prode 2026</h2>
+          <p>Hola <b>${user.first_name}</b>,</p>
+          <p>Recibimos una solicitud para restablecer tu contraseña.</p>
+          <a href="${resetUrl}"
+             style="display:inline-block;margin:1.5rem 0;padding:12px 28px;background:#16a34a;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
+            Restablecer contraseña
+          </a>
+          <p style="color:#6b7280;font-size:13px">Este link expira en 1 hora. Si no solicitaste esto, ignorá este email.</p>
+        </div>
+      `,
+    });
+
+    return res.json({ message: "Si el email existe, recibirás un link en minutos." });
+  } catch (err) {
+    console.error("forgotPassword error:", err);
+    return res.status(500).json({ message: "Error al procesar la solicitud" });
+  }
+};
+
+/**
+ * POST /api/auth/reset-password
+ * Valida el token y actualiza la contraseña
+ */
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) return res.status(400).json({ message: "Token y contraseña requeridos" });
+    if (password.length < 8) return res.status(400).json({ message: "Mínimo 8 caracteres" });
+
+    const user = await User.findOne({
+      passwordResetToken:   token,
+      passwordResetExpires: { $gt: new Date() },
+    });
+
+    if (!user) return res.status(400).json({ message: "Token inválido o expirado" });
+
+    user.password             = password; // el pre-save hook hashea
+    user.passwordResetToken   = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    return res.json({ message: "Contraseña actualizada correctamente" });
+  } catch (err) {
+    console.error("resetPassword error:", err);
+    return res.status(500).json({ message: "Error al resetear la contraseña" });
+  }
+};
+
 export const getSession = async (req, res) => {
   // Si el middleware verifyToken ya resolvió el usuario (JWT)
   if (req.user && req.user.id) {

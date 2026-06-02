@@ -40,7 +40,9 @@ const userSchema = new Schema({
   totalPoints: {
     type: Number,
     default: 0
-  }
+  },
+  passwordResetToken:   { type: String },
+  passwordResetExpires: { type: Date }
 }, { timestamps: true });
 
 // Encriptar contraseña antes de guardar el usuario (solo si existe password)

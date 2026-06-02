@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 import useMatches from "../hooks/useMatches";
 import { getMyPredictions } from "../services/prediction.service";
-import { getMyGroups, getGroupLeaderboard } from "../services/group.service";
+import { getMyGroups, getGroupLeaderboard, getPendingInvitations, acceptInvitation, rejectInvitation } from "../services/group.service";
 
 // Días hasta el inicio del Mundial
 const getDaysToWorldCup = () => {
@@ -49,17 +49,20 @@ const Dashboard = () => {
   const [predictions, setPredictions] = useState([]);
   const [groups, setGroups] = useState([]);
   const [groupsRanking, setGroupsRanking] = useState({});
+  const [pendingInvitations, setPendingInvitations] = useState([]);
   const [loading, setLoading] = useState(true);
   const daysLeft = getDaysToWorldCup();
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [predRes, groupsRes] = await Promise.all([
+        const [predRes, groupsRes, invRes] = await Promise.all([
           getMyPredictions(),
           getMyGroups(),
+          getPendingInvitations(),
         ]);
         setPredictions(predRes.data);
+        setPendingInvitations(invRes.data || []);
         const myGroups = groupsRes.data;
         setGroups(myGroups);
 
@@ -145,6 +148,42 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Banner invitaciones pendientes */}
+      {pendingInvitations.length > 0 && (
+        <div className="space-y-2">
+          {pendingInvitations.map((inv) => (
+            <div key={inv._id} className="bg-yellow-50 border border-yellow-300 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-yellow-800">
+                  🎉 ¡Te invitaron al grupo <span className="text-green-700">"{inv.group?.name}"</span>!
+                </p>
+                <p className="text-xs text-yellow-600 mt-0.5">
+                  Invitado por {inv.inviter?.first_name} {inv.inviter?.last_name}
+                </p>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <button
+                  onClick={async () => {
+                    await acceptInvitation(inv.token);
+                    setPendingInvitations(prev => prev.filter(i => i._id !== inv._id));
+                  }}
+                  style={{ padding: "5px 14px", borderRadius: "999px", fontSize: "13px", fontWeight: "600", background: "#16a34a", color: "#fff" }}
+                  className="hover:opacity-90 transition-opacity"
+                >Aceptar</button>
+                <button
+                  onClick={async () => {
+                    await rejectInvitation(inv.token);
+                    setPendingInvitations(prev => prev.filter(i => i._id !== inv._id));
+                  }}
+                  style={{ padding: "5px 14px", borderRadius: "999px", fontSize: "13px", fontWeight: "600", background: "#fff", color: "#6b7280", border: "1px solid #d1d5db" }}
+                  className="hover:opacity-90 transition-opacity"
+                >Rechazar</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

@@ -83,7 +83,12 @@ const Login = () => {
           </a>
         </div>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
+        <p className="text-center text-sm text-gray-500 mt-4">
+          <Link to="/forgot-password" className="text-gray-400 hover:text-green-600 transition-colors">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </p>
+        <p className="text-center text-sm text-gray-500 mt-2">
           ¿No tenés cuenta?{" "}
           <Link to="/register" className="text-green-600 hover:underline font-medium">
             Registrate
