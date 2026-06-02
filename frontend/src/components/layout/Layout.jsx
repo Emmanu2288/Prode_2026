@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
+import Footer from "./Footer";
 import useSocket from "../../hooks/useSocket";
 import { getExtras } from "../../services/prediction.service";
 
@@ -48,6 +49,7 @@ const Layout = () => {
       <main className="flex-1 w-full" style={{ padding: "2rem 2%" }}>
         <Outlet />
       </main>
+      <Footer />
     </div>
   );
 };

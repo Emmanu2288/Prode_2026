@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import useAuthStore from "../../store/authStore";
 import useNotificationStore from "../../store/notificationStore";
 import useDarkMode from "../../hooks/useDarkMode";
+import useInstallPrompt from "../../hooks/useInstallPrompt";
 import { acceptInvitation, rejectInvitation } from "../../services/group.service";
 
 const NAV_LINKS = [
@@ -86,6 +87,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [dark, setDark] = useDarkMode();
+  const { canInstall, install } = useInstallPrompt();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -125,6 +127,16 @@ const Navbar = () => {
               <Link to="/admin"
                 style={{ padding: "4px 14px", borderRadius: "999px", fontSize: "12px", fontWeight: "700", background: "#facc15", color: "#000" }}
                 className="hover:opacity-90 transition-opacity">Admin</Link>
+            )}
+            {canInstall && (
+              <button
+                onClick={install}
+                style={{ padding: "4px 14px", borderRadius: "999px", fontSize: "12px", fontWeight: "600", background: "#fff", color: "#166534", display: "flex", alignItems: "center", gap: "5px" }}
+                className="hover:opacity-90 transition-opacity"
+                title="Instalar app"
+              >
+                📲 Instalar app
+              </button>
             )}
             <button onClick={() => setDark(!dark)}
               className="p-1.5 rounded-lg hover:bg-green-700 transition-colors" title={dark ? "Modo claro" : "Modo oscuro"}>
@@ -187,6 +199,14 @@ const Navbar = () => {
                 className="font-condensed uppercase text-base py-2.5 px-3 rounded-lg bg-yellow-400 text-black font-bold mt-1">
                 ⭐ Admin
               </Link>
+            )}
+            {canInstall && (
+              <button
+                onClick={install}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-white text-green-800 font-semibold text-sm mt-1 hover:opacity-90 transition-opacity"
+              >
+                📲 Instalar app en el celular
+              </button>
             )}
             <div className="border-t border-green-700 mt-2 pt-3 flex items-center justify-between">
               <Link to="/profile" className="text-green-200 text-sm font-medium hover:text-white">
