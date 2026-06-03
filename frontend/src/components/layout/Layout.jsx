@@ -39,6 +39,75 @@ const ExtrasReminder = () => {
   );
 };
 
+const InvitationModal = () => {
+  const [invitations, setInvitations] = useState([]);
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    import("../../services/group.service").then(({ getPendingInvitations }) => {
+      getPendingInvitations().then(res => {
+        if (res.data?.length > 0) setInvitations(res.data);
+      }).catch(() => {});
+    });
+  }, []);
+
+  if (invitations.length === 0) return null;
+
+  const inv = invitations[current];
+
+  const handleAccept = async () => {
+    const { acceptInvitation } = await import("../../services/group.service");
+    await acceptInvitation(inv.token).catch(() => {});
+    next();
+  };
+
+  const handleReject = async () => {
+    const { rejectInvitation } = await import("../../services/group.service");
+    await rejectInvitation(inv.token).catch(() => {});
+    next();
+  };
+
+  const next = () => {
+    if (current + 1 < invitations.length) setCurrent(c => c + 1);
+    else setInvitations([]);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
+        <div className="text-5xl mb-3">🎉</div>
+        <h2 className="text-lg font-bold text-gray-800 mb-2">¡Tenés una invitación!</h2>
+        <p className="text-gray-600 text-sm mb-1">
+          <span className="font-semibold text-green-700">
+            {inv.inviter?.first_name} {inv.inviter?.last_name}
+          </span>{" "}
+          te invitó a unirte al grupo:
+        </p>
+        <p className="text-xl font-bold text-gray-800 my-3">
+          "{inv.group?.name}"
+        </p>
+        <div className="flex gap-3 mt-5">
+          <button
+            onClick={handleReject}
+            className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+          >
+            Rechazar
+          </button>
+          <button
+            onClick={handleAccept}
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
+          >
+            ✅ Aceptar
+          </button>
+        </div>
+        {invitations.length > 1 && (
+          <p className="text-xs text-gray-400 mt-3">{current + 1} de {invitations.length}</p>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Layout = () => {
   useSocket();
 
@@ -46,6 +115,7 @@ const Layout = () => {
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg-main)" }}>
       <Navbar />
       <ExtrasReminder />
+      <InvitationModal />
       <main className="flex-1 w-full" style={{ padding: "2rem 2%" }}>
         <Outlet />
       </main>

@@ -43,28 +43,15 @@ export const registerUser = async (req, res) => {
 
     await newUser.save();
 
-    // Aplicar inviteToken si viene
-    let joinedGroup = null;
+    // Aplicar inviteToken si viene — solo vincular el usuario, NO crear membresía todavía
     if (inviteToken) {
       try {
         const invitation = await Invitation.findOne({ token: inviteToken });
         if (invitation && invitation.status === "pending" && invitation.expiresAt > new Date()) {
-          if (invitation.email && invitation.email !== normalizedEmail) {
-            console.warn("Invite token email mismatch:", invitation.email, normalizedEmail);
-          } else {
-            try {
-              await Membership.create({ group: invitation.group, user: newUser._id });
-            } catch (err) {
-              if (err && err.code !== 11000) {
-                console.error("registerUser membership create error:", err);
-              }
-            }
-            invitation.status = "accepted";
-            invitation.invitedUser = newUser._id;
-            await invitation.save();
-            // Guardar nombre del grupo para mostrarlo en el frontend
-            joinedGroup = await Group.findById(invitation.group).select("name").lean();
-          }
+          // Solo vinculamos el usuario a la invitación para que aparezca en getPendingInvitations()
+          // El usuario deberá aceptar o rechazar desde la app
+          invitation.invitedUser = newUser._id;
+          await invitation.save();
         } else {
           console.warn("inviteToken inválido o expirado al registrar usuario");
         }
@@ -81,11 +68,7 @@ export const registerUser = async (req, res) => {
       role: newUser.role
     };
 
-    return res.status(201).json({
-      message: "Usuario registrado exitosamente",
-      user: safeUser,
-      joinedGroup: joinedGroup ? { id: joinedGroup._id, name: joinedGroup.name } : null,
-    });
+    return res.status(201).json({ message: "Usuario registrado exitosamente", user: safeUser });
   } catch (error) {
     console.error("registerUser error:", error);
     return res.status(500).json({ message: "Error al registrar el usuario" });

@@ -24,12 +24,8 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await register(form);
-      if (res.joinedGroup) {
-        navigate(`/login?registered=1&group=${encodeURIComponent(res.joinedGroup.name)}`);
-      } else {
-        navigate("/login?registered=1");
-      }
+      await register(form);
+      navigate("/login?registered=1");
     } catch {
       // error en store
     }
