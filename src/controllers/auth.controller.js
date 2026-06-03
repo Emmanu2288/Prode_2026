@@ -43,15 +43,33 @@ export const registerUser = async (req, res) => {
 
     await newUser.save();
 
-    // Aplicar inviteToken si viene — solo vincular el usuario, NO crear membresía todavía
+    // Aplicar inviteToken si viene
+    // El link es reutilizable: cada usuario que lo usa recibe su propia invitación personal
     if (inviteToken) {
       try {
-        const invitation = await Invitation.findOne({ token: inviteToken });
-        if (invitation && invitation.status === "pending" && invitation.expiresAt > new Date()) {
-          // Solo vinculamos el usuario a la invitación para que aparezca en getPendingInvitations()
-          // El usuario deberá aceptar o rechazar desde la app
-          invitation.invitedUser = newUser._id;
-          await invitation.save();
+        const templateInvitation = await Invitation.findOne({ token: inviteToken });
+        if (templateInvitation && templateInvitation.expiresAt > new Date()) {
+          // Verificar que no sea ya miembro
+          const alreadyMember = await Membership.exists({
+            group: templateInvitation.group,
+            user: newUser._id
+          });
+          // Verificar que no tenga ya una invitación pendiente para este grupo
+          const alreadyInvited = await Invitation.exists({
+            group: templateInvitation.group,
+            invitedUser: newUser._id,
+            status: "pending"
+          });
+
+          if (!alreadyMember && !alreadyInvited) {
+            // Crear una invitación personal para este usuario (no tocar el template)
+            await Invitation.create({
+              group:       templateInvitation.group,
+              inviter:     templateInvitation.inviter,
+              invitedUser: newUser._id,
+              status:      "pending",
+            });
+          }
         } else {
           console.warn("inviteToken inválido o expirado al registrar usuario");
         }
