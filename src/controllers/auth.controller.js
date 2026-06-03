@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { Resend } from "resend";
 import Invitation from "../models/Invitation.js";
 import Membership from "../models/Membership.js";
+import Group from "../models/Group.js";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -43,11 +44,11 @@ export const registerUser = async (req, res) => {
     await newUser.save();
 
     // Aplicar inviteToken si viene
+    let joinedGroup = null;
     if (inviteToken) {
       try {
         const invitation = await Invitation.findOne({ token: inviteToken });
         if (invitation && invitation.status === "pending" && invitation.expiresAt > new Date()) {
-          // Exigir coincidencia de email
           if (invitation.email && invitation.email !== normalizedEmail) {
             console.warn("Invite token email mismatch:", invitation.email, normalizedEmail);
           } else {
@@ -61,6 +62,8 @@ export const registerUser = async (req, res) => {
             invitation.status = "accepted";
             invitation.invitedUser = newUser._id;
             await invitation.save();
+            // Guardar nombre del grupo para mostrarlo en el frontend
+            joinedGroup = await Group.findById(invitation.group).select("name").lean();
           }
         } else {
           console.warn("inviteToken inválido o expirado al registrar usuario");
@@ -78,7 +81,11 @@ export const registerUser = async (req, res) => {
       role: newUser.role
     };
 
-    return res.status(201).json({ message: "Usuario registrado exitosamente", user: safeUser });
+    return res.status(201).json({
+      message: "Usuario registrado exitosamente",
+      user: safeUser,
+      joinedGroup: joinedGroup ? { id: joinedGroup._id, name: joinedGroup.name } : null,
+    });
   } catch (error) {
     console.error("registerUser error:", error);
     return res.status(500).json({ message: "Error al registrar el usuario" });
