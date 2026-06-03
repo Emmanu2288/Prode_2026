@@ -70,10 +70,11 @@ export const getTournamentData = async (req, res) => {
         timeout: 8000,
       });
       const top = scorersRes.data?.response?.[0];
-      if (top) {
+      const goals = top?.statistics?.[0]?.goals?.total ?? 0;
+      if (top && goals > 0) {
         results.topScorer = {
           name: top.player?.name,
-          goals: top.statistics?.[0]?.goals?.total,
+          goals,
           team: top.statistics?.[0]?.team?.name,
           photo: top.player?.photo,
         };
