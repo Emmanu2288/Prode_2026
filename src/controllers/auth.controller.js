@@ -11,7 +11,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const COOKIE_NAME = "authToken";
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = "1h";
+const JWT_EXPIRES_IN = "8h";
 
 /**
  * Registro con soporte para inviteToken
