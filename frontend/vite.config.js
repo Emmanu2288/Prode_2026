@@ -36,6 +36,9 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Activar nueva versión inmediatamente sin esperar
+        skipWaiting: true,
+        clientsClaim: true,
         // Cachear assets estáticos
         globPatterns: ['**/*.{js,css,html,ico,png,jpg,svg}'],
         // No cachear las llamadas a la API
