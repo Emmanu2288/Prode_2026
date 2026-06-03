@@ -7,7 +7,8 @@ const groupSchema = new Schema({
   owner: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
   description: { type: String, trim: true },
   isPublic: { type: Boolean, default: false },
-  inviteOnly: { type: Boolean, default: true } // si true, solo owner puede invitar
+  inviteOnly: { type: Boolean, default: true },
+  paymentType: { type: String, enum: ["single", "multi"], default: "single" } // single=pago único, multi=por fase
 }, { timestamps: true });
 
 export default mongoose.model("Group", groupSchema);

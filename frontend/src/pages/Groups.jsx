@@ -8,7 +8,7 @@ const Groups = () => {
   const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ name: "", description: "" });
+  const [form, setForm] = useState({ name: "", description: "", paymentType: "single" });
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -83,13 +83,15 @@ const Groups = () => {
             <h1 className="text-3xl font-bold text-white tracking-tight">Grupos</h1>
             <p className="text-green-300 text-sm mt-1">Competí con tus amigos</p>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            style={{ padding: "8px 20px", borderRadius: "12px", fontSize: "14px", fontWeight: "600", background: "#22c55e", color: "#fff" }}
-            className="hover:opacity-90 transition-opacity"
-          >
-            + Crear grupo
-          </button>
+          {user?.role === "admin" && (
+            <button
+              onClick={() => setShowCreate(true)}
+              style={{ padding: "8px 20px", borderRadius: "12px", fontSize: "14px", fontWeight: "600", background: "#22c55e", color: "#fff" }}
+              className="hover:opacity-90 transition-opacity"
+            >
+              + Crear grupo
+            </button>
+          )}
         </div>
       </div>
 
@@ -131,13 +133,17 @@ const Groups = () => {
         <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
           <span className="text-5xl">👥</span>
           <p className="text-gray-600 font-medium mt-4">Todavía no pertenecés a ningún grupo</p>
-          <p className="text-gray-400 text-sm mt-1">Creá uno o esperá una invitación</p>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="mt-5 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-          >
-            Crear mi grupo
-          </button>
+          <p className="text-gray-400 text-sm mt-1">
+            {user?.role === "admin" ? "Creá uno o esperá una invitación" : "Esperá una invitación de tu organizador"}
+          </p>
+          {user?.role === "admin" && (
+            <button
+              onClick={() => setShowCreate(true)}
+              className="mt-5 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+            >
+              Crear mi grupo
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -185,6 +191,17 @@ const Groups = () => {
                   placeholder="Ej: Los Cracks del Trabajo"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de pago</label>
+                <select
+                  value={form.paymentType}
+                  onChange={(e) => setForm({ ...form, paymentType: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="single">Pago único (Grupo 1)</option>
+                  <option value="multi">Por fase — 8 pagos (Grupo 2)</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descripción (opcional)</label>

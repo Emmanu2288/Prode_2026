@@ -2,6 +2,7 @@ import { Router } from "express";
 import { createGroup, inviteToGroup, getGroupMembers, getMyGroups, getGroupById, getGroupPredictions, deleteGroup } from "../controllers/group.controller.js";
 import { getGroupLeaderboard } from "../controllers/groupPoints.controller.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
+import { roleMiddleware } from "../middlewares/role.middleware.js";
 
 export const initGroupRoutes = (app) => {
   const router = Router();
@@ -9,8 +10,8 @@ export const initGroupRoutes = (app) => {
   // Mis grupos (grupos donde soy miembro)
   router.get("/my", verifyToken, getMyGroups);
 
-  // Crear grupo
-  router.post("/", verifyToken, createGroup);
+  // Crear grupo (solo admin)
+  router.post("/", verifyToken, roleMiddleware(["admin"]), createGroup);
 
   // Detalle de un grupo
   router.get("/:groupId", verifyToken, getGroupById);

@@ -5,6 +5,8 @@ import {
   getGroupMembers,
   getGroupLeaderboard,
   getGroupPredictions,
+  getGroupPayments,
+  togglePayment,
   deleteGroup,
   inviteToGroup,
 } from "../services/group.service";
@@ -23,6 +25,7 @@ const GroupDetail = () => {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("ranking");
   const [selectedMatch, setSelectedMatch] = useState(null);
+  const [payments, setPayments] = useState([]);
 
   // Invitar — búsqueda de usuarios registrados
   const [searchQuery, setSearchQuery] = useState("");
@@ -186,7 +189,7 @@ const GroupDetail = () => {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
-        {["ranking", "partidos", "miembros", "invitar"].map((t) => (
+        {["ranking", "partidos", "miembros", ...(user?.role === "admin" ? ["pagos", "invitar"] : ["invitar"])].map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -196,7 +199,7 @@ const GroupDetail = () => {
                 : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
-            {t === "ranking" ? "🏆 Ranking" : t === "partidos" ? "⚽ Partidos" : t === "miembros" ? "👥 Miembros" : "✉️ Invitar"}
+            {t === "ranking" ? "🏆 Ranking" : t === "partidos" ? "⚽ Partidos" : t === "miembros" ? "👥 Miembros" : t === "pagos" ? "💰 Pagos" : "✉️ Invitar"}
           </button>
         ))}
       </div>
@@ -317,6 +320,83 @@ const GroupDetail = () => {
           )}
         </div>
       )}
+
+      {/* Tab: Pagos (solo admin) */}
+      {tab === "pagos" && user?.role === "admin" && (() => {
+        const phases = group?.paymentType === "multi"
+          ? ["Fase de grupos 1","Fase de grupos 2","Fase de grupos 3","Octavos de final","Cuartos de final","Semifinales","3° y 4° puesto","Final"]
+          : ["Pago único"];
+
+        if (payments.length === 0) {
+          getGroupPayments(groupId).then(r => setPayments(r.data)).catch(() => {});
+        }
+
+        const handleToggle = async (userId, phase, current) => {
+          await togglePayment(groupId, userId, phase, { paid: !current });
+          const r = await getGroupPayments(groupId);
+          setPayments(r.data);
+        };
+
+        return (
+          <div className="space-y-4">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="text-left px-3 py-2 rounded-l-lg text-xs text-gray-500 uppercase">Jugador</th>
+                    {phases.map(p => (
+                      <th key={p} className="text-center px-2 py-2 text-xs text-gray-500 uppercase whitespace-nowrap">{p}</th>
+                    ))}
+                    <th className="text-center px-3 py-2 rounded-r-lg text-xs text-gray-500 uppercase">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {payments.map((member) => {
+                    const paidCount = phases.filter(p => member.payments[p]?.paid).length;
+                    return (
+                      <tr key={member.userId} className="hover:bg-gray-50">
+                        <td className="px-3 py-2.5">
+                          <p className="font-medium text-gray-800 text-xs">{member.name}</p>
+                          <p className="text-gray-400 text-xs">{member.email}</p>
+                        </td>
+                        {phases.map(phase => {
+                          const paid = member.payments[phase]?.paid || false;
+                          return (
+                            <td key={phase} className="text-center px-2 py-2.5">
+                              <button
+                                onClick={() => handleToggle(member.userId, phase, paid)}
+                                className={`w-7 h-7 rounded-full font-bold text-sm transition-colors ${
+                                  paid
+                                    ? "bg-green-500 text-white"
+                                    : "bg-gray-100 text-gray-300 hover:bg-gray-200"
+                                }`}
+                              >
+                                {paid ? "✓" : "·"}
+                              </button>
+                            </td>
+                          );
+                        })}
+                        <td className="text-center px-3 py-2.5">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                            paidCount === phases.length ? "bg-green-100 text-green-700" :
+                            paidCount > 0 ? "bg-yellow-100 text-yellow-700" :
+                            "bg-red-50 text-red-400"
+                          }`}>
+                            {paidCount}/{phases.length}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {payments.length === 0 && (
+              <p className="text-center text-gray-400 text-sm py-8">No hay miembros todavía</p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Tab: Miembros */}
       {tab === "miembros" && (

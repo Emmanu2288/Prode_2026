@@ -86,7 +86,7 @@ export const getGroupById = async (req, res) => {
 
 export const createGroup = async (req, res) => {
   try {
-    const { name, description, isPublic = false, inviteOnly = true } = req.body;
+    const { name, description, isPublic = false, inviteOnly = true, paymentType = "single" } = req.body;
     if (!name) return res.status(400).json({ message: "El nombre del grupo es requerido" });
 
     // Normalizar owner: preferimos req.user.id, pero soportamos sub/_id o fallback a body.owner
@@ -100,7 +100,8 @@ export const createGroup = async (req, res) => {
       description,
       owner: ownerId,
       isPublic,
-      inviteOnly
+      inviteOnly,
+      paymentType,
     });
 
     // Crear membership del owner (role owner)

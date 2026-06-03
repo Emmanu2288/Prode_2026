@@ -22,6 +22,7 @@ import { initGroupRoutes } from "./routes/group.routes.js";
 import { initInvitationRoutes } from "./routes/invitation.routes.js";
 import { initWebhookRoutes } from "./routes/webhook.routes.js";
 import { initAdminRoutes } from "./routes/admin.routes.js";
+import { initPaymentRoutes } from "./routes/payment.routes.js";
 
 // Importamos cron jobs
 import { scheduleMatchStatusCheck } from './services/cron.service.js';
@@ -90,6 +91,7 @@ const start = async () => {
     // Inicializar rutas de webhook (usa req.rawBody para HMAC)
     initWebhookRoutes(app);
     initAdminRoutes(app);
+    initPaymentRoutes(app);
 
     // Crear servidor HTTP y Socket.IO
     const server = http.createServer(app);
