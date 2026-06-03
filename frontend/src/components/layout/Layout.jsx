@@ -89,13 +89,15 @@ const InvitationModal = () => {
         <div className="flex gap-3 mt-5">
           <button
             onClick={handleReject}
-            className="flex-1 border border-gray-300 text-gray-600 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+            style={{ padding: "10px 24px", borderRadius: "12px", fontSize: "14px", fontWeight: "500", border: "1px solid #d1d5db", color: "#6b7280", flex: 1 }}
+            className="hover:bg-gray-50 transition-colors"
           >
             Rechazar
           </button>
           <button
             onClick={handleAccept}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
+            style={{ padding: "10px 24px", borderRadius: "12px", fontSize: "14px", fontWeight: "600", background: "#16a34a", color: "#fff", flex: 1 }}
+            className="hover:opacity-90 transition-opacity"
           >
             ✅ Aceptar
           </button>
