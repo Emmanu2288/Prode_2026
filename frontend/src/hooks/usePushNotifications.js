@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import api from "../services/api";
 import useAuthStore from "../store/authStore";
 
@@ -9,48 +9,41 @@ const urlBase64ToUint8Array = (base64String) => {
   return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
 };
 
+export const subscribeToPush = async () => {
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+    const reg = await navigator.serviceWorker.ready;
+    const { data } = await api.get("/push/vapid-key");
+    const applicationServerKey = urlBase64ToUint8Array(data.publicKey);
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") return false;
+    const subscription = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+    await api.post("/push/subscribe", subscription.toJSON());
+    return true;
+  } catch (err) {
+    console.warn("Push subscription error:", err.message);
+    return false;
+  }
+};
+
 const usePushNotifications = () => {
   const token = useAuthStore((s) => s.token);
+  const [bannerVisible, setBannerVisible] = useState(false);
 
   useEffect(() => {
     if (!token) return;
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-
-    const subscribe = async () => {
-      try {
-        const reg = await navigator.serviceWorker.ready;
-
-        // Obtener VAPID public key del backend
-        const { data } = await api.get("/push/vapid-key");
-        const applicationServerKey = urlBase64ToUint8Array(data.publicKey);
-
-        // Verificar si ya está suscrito
-        const existing = await reg.pushManager.getSubscription();
-        if (existing) {
-          await api.post("/push/subscribe", existing.toJSON()).catch(() => {});
-          return;
-        }
-
-        // Pedir permiso
-        const permission = await Notification.requestPermission();
-        if (permission !== "granted") return;
-
-        // Crear nueva suscripción
-        const subscription = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey,
-        });
-
-        await api.post("/push/subscribe", subscription.toJSON());
-      } catch (err) {
-        console.warn("Push subscription error:", err.message);
-      }
-    };
-
-    // Esperar un poco para no bloquear la carga inicial
-    const timer = setTimeout(subscribe, 3000);
+    if (Notification.permission === "granted") {
+      subscribeToPush().catch(() => {});
+      return;
+    }
+    if (Notification.permission === "denied") return;
+    // Permiso no decidido → mostrar banner después de 2s
+    const timer = setTimeout(() => setBannerVisible(true), 2000);
     return () => clearTimeout(timer);
   }, [token]);
+
+  return { bannerVisible, setBannerVisible };
 };
 
 export default usePushNotifications;

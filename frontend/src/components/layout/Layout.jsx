@@ -3,7 +3,7 @@ import { Link, Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import useSocket from "../../hooks/useSocket";
-import usePushNotifications from "../../hooks/usePushNotifications";
+import usePushNotifications, { subscribeToPush } from "../../hooks/usePushNotifications";
 import { getExtras } from "../../services/prediction.service";
 
 const KNOCKOUT_DATE = new Date("2026-06-27T00:00:00");
@@ -113,12 +113,37 @@ const InvitationModal = () => {
 
 const Layout = () => {
   useSocket();
-  usePushNotifications();
+  const { bannerVisible, setBannerVisible } = usePushNotifications();
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg-main)" }}>
       <Navbar />
       <ExtrasReminder />
+
+      {/* Banner activar notificaciones push */}
+      {bannerVisible && (
+        <div className="bg-green-700 text-white px-6 py-3 flex items-center justify-between text-sm">
+          <span>🔔 ¿Querés recibir avisos cuando empiece un partido?</span>
+          <div className="flex gap-2 ml-4 flex-shrink-0">
+            <button
+              onClick={async () => {
+                const ok = await subscribeToPush();
+                setBannerVisible(false);
+                if (ok) alert("✅ ¡Notificaciones activadas!");
+              }}
+              style={{ padding: "4px 14px", borderRadius: "999px", fontSize: "13px", fontWeight: "600", background: "#fff", color: "#166534" }}
+            >
+              Activar
+            </button>
+            <button
+              onClick={() => setBannerVisible(false)}
+              className="text-green-200 hover:text-white text-xs"
+            >
+              Ahora no
+            </button>
+          </div>
+        </div>
+      )}
       <InvitationModal />
       <main className="flex-1 w-full" style={{ padding: "2rem 2%" }}>
         <Outlet />
