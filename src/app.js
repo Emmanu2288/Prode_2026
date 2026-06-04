@@ -23,6 +23,7 @@ import { initInvitationRoutes } from "./routes/invitation.routes.js";
 import { initWebhookRoutes } from "./routes/webhook.routes.js";
 import { initAdminRoutes } from "./routes/admin.routes.js";
 import { initPaymentRoutes } from "./routes/payment.routes.js";
+import { initPushRoutes } from "./routes/push.routes.js";
 
 // Importamos cron jobs
 import { scheduleMatchStatusCheck } from './services/cron.service.js';
@@ -92,6 +93,7 @@ const start = async () => {
     initWebhookRoutes(app);
     initAdminRoutes(app);
     initPaymentRoutes(app);
+    initPushRoutes(app);
 
     // Crear servidor HTTP y Socket.IO
     const server = http.createServer(app);

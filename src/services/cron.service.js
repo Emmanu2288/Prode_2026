@@ -8,6 +8,10 @@ import Correction from "../models/Correction.js";
 import { getWorldCup2026Matches } from "./match.service.js";
 import { calculatePointsFinal } from "./points.service.js";
 import { captureException, slackAlert } from "../utils/alerts.js";
+import { sendPushToAll } from "./push.service.js";
+
+// Registro de partidos ya notificados para no repetir
+const notifiedMatches = new Set();
 
 const CORRECTION_ALERT_THRESHOLD = Number(process.env.CORRECTION_ALERT_THRESHOLD || 10);
 const MAX_PARALLEL_USERS = Number(process.env.MAX_PARALLEL_USERS || 50);
@@ -182,6 +186,41 @@ export const scheduleFinalizeMatchesReconciler = () => {
   });
 };
 
+// Cron: notificación push 1 hora antes de cada partido
+const scheduleMatchReminders = () => {
+  cron.schedule("*/5 * * * *", async () => {
+    try {
+      const matches = await getWorldCup2026Matches();
+      const now = new Date();
+      const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+      const fiveMinFromNow = new Date(now.getTime() + 5 * 60 * 1000);
+
+      for (const match of matches) {
+        if (match.fixture?.status?.short !== "NS") continue;
+        const matchTime = new Date(match.fixture.date);
+        const matchId = String(match.fixture.id);
+
+        // Si el partido empieza entre ahora+5min y ahora+1hora → notificar
+        if (matchTime > fiveMinFromNow && matchTime <= oneHourFromNow && !notifiedMatches.has(matchId)) {
+          notifiedMatches.add(matchId);
+          const home = match.teams?.home?.name;
+          const away = match.teams?.away?.name;
+          const timeStr = matchTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
+
+          await sendPushToAll({
+            title: "⚽ ¡Partido en 1 hora!",
+            body: `${home} vs ${away} empieza a las ${timeStr}. ¡Pronosticá antes que empiece!`,
+            url: "/fixtures",
+          }).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error("scheduleMatchReminders error:", err.message);
+    }
+  });
+};
+
 export const scheduleMatchStatusCheck = () => {
   scheduleFinalizeMatchesReconciler();
+  scheduleMatchReminders();
 };

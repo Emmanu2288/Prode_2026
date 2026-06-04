@@ -8,6 +8,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       registerType: 'autoUpdate',
       includeAssets: ['logo.png', 'hero-bg.jpg', 'favicon.ico'],
       manifest: {
@@ -35,30 +38,8 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
-        // Activar nueva versión inmediatamente sin esperar
-        skipWaiting: true,
-        clientsClaim: true,
-        // Cachear assets estáticos
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,jpg,svg}'],
-        // No cachear las llamadas a la API
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api/],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: { cacheName: 'google-fonts-cache' },
-          },
-          {
-            urlPattern: /^https:\/\/media\.api-sports\.io\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'team-logos-cache',
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 },
-            },
-          },
-        ],
       },
     }),
   ],

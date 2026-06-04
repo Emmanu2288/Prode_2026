@@ -3,6 +3,7 @@ import { Link, Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import useSocket from "../../hooks/useSocket";
+import usePushNotifications from "../../hooks/usePushNotifications";
 import { getExtras } from "../../services/prediction.service";
 
 const KNOCKOUT_DATE = new Date("2026-06-27T00:00:00");
@@ -112,6 +113,7 @@ const InvitationModal = () => {
 
 const Layout = () => {
   useSocket();
+  usePushNotifications();
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg-main)" }}>
