@@ -104,6 +104,18 @@ const NewPrediction = () => {
       .finally(() => setLoadingPlayers(false));
   }, []);
 
+  // Carga el script del widget de api-football si no está ya
+  useEffect(() => {
+    const scriptId = "api-football-widget-script";
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement("script");
+      script.id = scriptId;
+      script.src = "https://widgets.api-sports.io/2.0.3/widgets.js";
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
+
   if (checkingExisting) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -160,6 +172,25 @@ const NewPrediction = () => {
               <img src={teams.away.logo} alt={teams.away.name} className="w-16 h-16 object-contain" />
               <span className="text-sm font-semibold text-gray-700 text-center">{teams.away.name}</span>
             </div>
+          </div>
+
+          {/* Historial entre los equipos (H2H) */}
+          <div className="bg-card rounded-xl border border-gray-100 p-4 mb-6">
+            <p className="text-center text-xs text-gray-400 uppercase tracking-widest mb-3 font-medium">
+              📊 Historial entre los equipos
+            </p>
+            <div
+              id="wg-api-football-h2h"
+              data-host="v3.football.api-sports.io"
+              data-key={import.meta.env.VITE_FOOTBALL_API_KEY}
+              data-date={fixture.date.split("T")[0]}
+              data-team-a={teams.home.id}
+              data-team-b={teams.away.id}
+              data-theme=""
+              data-show-errors="false"
+              data-show-logos="true"
+              className="wg_loader"
+            />
           </div>
 
           {/* Marcador */}

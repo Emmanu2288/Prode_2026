@@ -41,6 +41,7 @@ export const getGroupPayments = async (req, res) => {
       name:      `${m.user?.first_name} ${m.user?.last_name}`,
       email:     m.user?.email,
       payments:  paymentMap[m.user?._id?.toString()] || {},
+      enabled:   m.enabled !== false,
     }));
 
     return res.json(result);
@@ -73,5 +74,31 @@ export const togglePayment = async (req, res) => {
   } catch (err) {
     console.error("togglePayment error:", err);
     return res.status(500).json({ message: "Error al actualizar pago" });
+  }
+};
+
+/**
+ * PATCH /api/payments/group/:groupId/user/:userId/enabled
+ * Habilita/bloquea a un usuario para pronosticar (control de pago)
+ */
+export const toggleEnabled = async (req, res) => {
+  try {
+    const { groupId, userId } = req.params;
+    const { enabled } = req.body;
+
+    const membership = await Membership.findOneAndUpdate(
+      { group: groupId, user: userId },
+      { enabled: !!enabled },
+      { new: true }
+    );
+
+    if (!membership) {
+      return res.status(404).json({ message: "Membresía no encontrada" });
+    }
+
+    return res.json({ userId, enabled: membership.enabled });
+  } catch (err) {
+    console.error("toggleEnabled error:", err);
+    return res.status(500).json({ message: "Error al actualizar habilitación" });
   }
 };

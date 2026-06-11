@@ -7,6 +7,7 @@ import {
   getGroupPredictions,
   getGroupPayments,
   togglePayment,
+  toggleMemberEnabled,
   deleteGroup,
   inviteToGroup,
   updateGroup,
@@ -357,6 +358,11 @@ const GroupDetail = () => {
           });
         };
 
+        const handleToggleEnabled = async (userId, current) => {
+          await toggleMemberEnabled(groupId, userId, !current);
+          setPayments(prev => prev.map(m => m.userId === userId ? { ...m, enabled: !current } : m));
+        };
+
         const handleSaveAmount = async () => {
           setSavingAmount(true);
           try {
@@ -408,7 +414,8 @@ const GroupDetail = () => {
                     {phases.map(p => (
                       <th key={p} className="text-center px-2 py-2 text-xs text-gray-500 uppercase whitespace-nowrap">{p}</th>
                     ))}
-                    <th className="text-center px-3 py-2 rounded-r-lg text-xs text-gray-500 uppercase">Total</th>
+                    <th className="text-center px-2 py-2 text-xs text-gray-500 uppercase">Total</th>
+                    <th className="text-center px-3 py-2 rounded-r-lg text-xs text-gray-500 uppercase">Habilitado</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -437,7 +444,7 @@ const GroupDetail = () => {
                             </td>
                           );
                         })}
-                        <td className="text-center px-3 py-2.5">
+                        <td className="text-center px-2 py-2.5">
                           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                             paidCount === phases.length ? "bg-green-100 text-green-700" :
                             paidCount > 0 ? "bg-yellow-100 text-yellow-700" :
@@ -445,6 +452,19 @@ const GroupDetail = () => {
                           }`}>
                             {paidCount}/{phases.length}
                           </span>
+                        </td>
+                        <td className="text-center px-3 py-2.5">
+                          <button
+                            onClick={() => handleToggleEnabled(member.userId, member.enabled)}
+                            className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors ${
+                              member.enabled
+                                ? "bg-green-100 text-green-700 hover:bg-green-200"
+                                : "bg-red-100 text-red-600 hover:bg-red-200"
+                            }`}
+                            title={member.enabled ? "Click para bloquear" : "Click para habilitar"}
+                          >
+                            {member.enabled ? "✓ Habilitado" : "🔒 Bloqueado"}
+                          </button>
                         </td>
                       </tr>
                     );

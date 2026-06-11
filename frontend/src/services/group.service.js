@@ -14,6 +14,8 @@ export const deleteGroup           = (id)        => api.delete(`/groups/${id}`);
 export const getGroupPayments      = (id)        => api.get(`/payments/group/${id}`);
 export const togglePayment         = (groupId, userId, phase, data) =>
   api.patch(`/payments/group/${groupId}/user/${userId}/phase/${encodeURIComponent(phase)}`, data);
+export const toggleMemberEnabled   = (groupId, userId, enabled) =>
+  api.patch(`/payments/group/${groupId}/user/${userId}/enabled`, { enabled });
 export const getPendingInvitations = ()          => api.get("/invitations/pending");
 export const acceptInvitation  = (token)         => api.post("/invitations/accept", { token });
 export const rejectInvitation  = (token)         => api.post(`/invitations/${token}/reject`);

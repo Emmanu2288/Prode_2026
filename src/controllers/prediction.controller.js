@@ -1,5 +1,6 @@
 import axios from "axios";
 import Prediction from "../models/Prediction.js";
+import Membership from "../models/Membership.js";
 
 const API_URL = "https://v3.football.api-sports.io";
 const API_KEY = process.env.FOOTBALL_API_KEY;
@@ -9,6 +10,11 @@ export const createPrediction = async (req, res) => {
   try {
     const { match, predictedScore, mvpPlayer } = req.body;
     const userId = req.user.id;
+
+    const blocked = await Membership.exists({ user: userId, enabled: false });
+    if (blocked) {
+      return res.status(403).json({ error: "🔒 Todavía no podés pronosticar: falta confirmar tu pago. Si ya transferiste, avisale a tu admin para que te habilite." });
+    }
 
     if (!match) {
       return res.status(400).json({ error: "Faltan datos: match es requerido." });
@@ -75,6 +81,11 @@ export const updatePrediction = async (req, res) => {
     const { matchId } = req.params;
     const { predictedScore, mvpPlayer } = req.body;
     const userId = req.user.id;
+
+    const blocked = await Membership.exists({ user: userId, enabled: false });
+    if (blocked) {
+      return res.status(403).json({ error: "🔒 Todavía no podés pronosticar: falta confirmar tu pago. Si ya transferiste, avisale a tu admin para que te habilite." });
+    }
 
     // Verificar estado del partido
     try {

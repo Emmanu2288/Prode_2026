@@ -6,6 +6,7 @@ const membershipSchema = new Schema({
   group: { type: Schema.Types.ObjectId, ref: "Group", required: true, index: true },
   user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
   roleInGroup: { type: String, enum: ["owner", "moderator", "member"], default: "member" },
+  enabled: { type: Boolean, default: true },
   joinedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
