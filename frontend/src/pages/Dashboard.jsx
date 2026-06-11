@@ -4,7 +4,6 @@ import useAuthStore from "../store/authStore";
 import useMatches from "../hooks/useMatches";
 import { getMyPredictions } from "../services/prediction.service";
 import { getMyGroups, getGroupLeaderboard, getPendingInvitations, acceptInvitation, rejectInvitation } from "../services/group.service";
-import { loadFootballWidgets } from "../utils/footballWidgets";
 
 // Días hasta el inicio del Mundial
 const getDaysToWorldCup = () => {
@@ -19,6 +18,15 @@ const getTodayStr = () => {
   const t = new Date();
   return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
 };
+
+// Fecha de un fixture en formato YYYY-MM-DD (zona horaria local)
+const getMatchDateStr = (isoDate) => {
+  const d = new Date(isoDate);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+const LIVE_STATUSES = new Set(["1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT"]);
+const FINISHED_STATUSES = new Set(["FT", "AET", "PEN"]);
 
 const StatCard = ({ value, label, image, overlay }) => {
   return (
@@ -100,16 +108,15 @@ const Dashboard = () => {
     load();
   }, [user]);
 
-  // Cargar widget script de api-football
-  useEffect(() => {
-    loadFootballWidgets();
-  }, []);
-
   // Partidos NS sin pronosticar
   const predictedMatchIds = new Set(predictions.map((p) => String(p.matchId)));
   const unpredictedMatches = matches
     .filter((m) => m.fixture.status.short === "NS" && !predictedMatchIds.has(String(m.fixture.id)))
     .slice(0, 4);
+
+  // Partidos del Mundial que se juegan hoy
+  const todayStr = getTodayStr();
+  const todayMatches = matches.filter((m) => getMatchDateStr(m.fixture.date) === todayStr);
 
   const totalPoints = user?.totalPoints ?? predictions.reduce((s, p) => s + (p.points || 0), 0);
   const predictedCount = predictions.length;
@@ -330,23 +337,59 @@ const Dashboard = () => {
         </section>
       )}
 
-      {/* Widget: partidos de hoy */}
+      {/* Partidos de hoy */}
       <section className="bg-card rounded-xl border border-gray-100 p-4">
         <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
           Partidos del Mundial — hoy
         </h2>
-        <div
-          id="wg-api-football-games"
-          data-host="v3.football.api-sports.io"
-          data-key={import.meta.env.VITE_FOOTBALL_API_KEY}
-          data-date={getTodayStr()}
-          data-league="1"
-          data-season="2026"
-          data-theme=""
-          data-show-errors="false"
-          data-show-logos="true"
-          className="wg_loader"
-        />
+        {matchesLoading ? (
+          <p className="text-center text-xs text-gray-400 py-3">Cargando partidos...</p>
+        ) : todayMatches.length === 0 ? (
+          <p className="text-center text-xs text-gray-400 py-3">No hay partidos del Mundial programados para hoy.</p>
+        ) : (
+          <div className="space-y-2">
+            {todayMatches.map((m) => {
+              const status = m.fixture.status.short;
+              const isLive = LIVE_STATUSES.has(status);
+              const isFinished = FINISHED_STATUSES.has(status);
+              return (
+                <button
+                  key={m.fixture.id}
+                  onClick={() => navigate(`/fixtures/${m.fixture.id}`)}
+                  className="bg-card rounded-xl border border-gray-100 flex items-center justify-between w-full text-left hover:border-green-200 hover:shadow-md transition-all"
+                  style={{ padding: "10px 16px", gap: "12px" }}
+                >
+                  <div className="flex items-center min-w-0" style={{ gap: "12px" }}>
+                    <img src={m.teams.home.logo} alt="" className="w-8 h-8 object-contain flex-shrink-0" />
+                    <p className="text-xs font-semibold text-gray-700 truncate">
+                      {m.teams.home.name} vs {m.teams.away.name}
+                    </p>
+                    <img src={m.teams.away.logo} alt="" className="w-8 h-8 object-contain flex-shrink-0" />
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    {isLive ? (
+                      <>
+                        <p className="text-sm font-bold text-gray-800">{m.goals.home} - {m.goals.away}</p>
+                        <p className="text-xs text-red-500 font-semibold">
+                          ⏱ {m.fixture.status.elapsed}'
+                        </p>
+                      </>
+                    ) : isFinished ? (
+                      <>
+                        <p className="text-sm font-bold text-gray-800">{m.goals.home} - {m.goals.away}</p>
+                        <p className="text-xs text-gray-400">Finalizado</p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-gray-400">
+                        {new Date(m.fixture.date).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                      </p>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </section>
 
     </div>
