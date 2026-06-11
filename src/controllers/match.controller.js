@@ -68,16 +68,19 @@ export const getFixturePlayers = async (req, res) => {
       });
     }
 
-    // 3. Sin lineup: usar plantel completo de cada equipo
-    const season = process.env.API_SEASON || 2026;
+    // 3. Sin lineup: usar plantel actual de cada equipo.
+    // /players?season= solo devuelve jugadores con estadísticas registradas
+    // en esa temporada para ese equipo, y al arrancar el torneo todavía no
+    // jugaron nada (plantel incompleto). /players/squads devuelve el plantel
+    // registrado completo, sin depender de stats.
     const [homeRes, awayRes] = await Promise.all([
-      axios.get(`${API_URL}/players`, {
-        params: { team: homeId, season },
+      axios.get(`${API_URL}/players/squads`, {
+        params: { team: homeId },
         headers: { "x-apisports-key": API_KEY },
         timeout: 8000,
       }),
-      axios.get(`${API_URL}/players`, {
-        params: { team: awayId, season },
+      axios.get(`${API_URL}/players/squads`, {
+        params: { team: awayId },
         headers: { "x-apisports-key": API_KEY },
         timeout: 8000,
       }),
@@ -85,10 +88,10 @@ export const getFixturePlayers = async (req, res) => {
 
     const formatSquad = (teamName, data) => ({
       team: teamName,
-      players: (data.response || []).map((entry) => ({
-        id: entry.player?.id,
-        name: entry.player?.name,
-        pos: entry.statistics?.[0]?.games?.position,
+      players: (data.response?.[0]?.players || []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        pos: p.position,
         starter: null,
       })),
     });
