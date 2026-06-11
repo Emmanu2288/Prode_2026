@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   getAdminUsers, getAdminGroups, getTournamentData,
   processTournamentAwards, getFinishedMatches, setManualMvp,
-  generateResetLink,
+  generateResetLink, sendAnnouncement,
 } from "../services/admin.service";
 import { getFixturePlayers } from "../services/match.service";
 
@@ -11,6 +11,7 @@ const TABS = [
   { key: "groups",   label: "🏘️ Grupos" },
   { key: "awards",   label: "🏆 Premios del torneo" },
   { key: "mvp",      label: "⭐ MVP por partido" },
+  { key: "announce", label: "📢 Avisos" },
 ];
 
 // ─── Tab Usuarios ─────────────────────────────────────────────────────────────
@@ -407,6 +408,106 @@ const MvpTab = () => {
   );
 };
 
+// ─── Tab Avisos ───────────────────────────────────────────────────────────────
+const AnnounceTab = () => {
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [url, setUrl] = useState("/dashboard");
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState(null);
+
+  const handleSend = async () => {
+    if (!title.trim() || !message.trim()) return;
+    if (!window.confirm("¿Enviar este aviso a TODOS los usuarios? Esta acción no se puede deshacer.")) return;
+    setSending(true);
+    setResult(null);
+    try {
+      const r = await sendAnnouncement({ title: title.trim(), message: message.trim(), url: url.trim() || "/" });
+      setResult({ ok: true, pushSent: r.data.pushSent });
+    } catch (err) {
+      setResult({ ok: false, error: err.response?.data?.error || "Error al enviar el aviso" });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4 max-w-lg">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+        <p className="text-xs text-blue-700">
+          Se envía como notificación push a quienes la tengan activada y aparece en la
+          campana 🔔 de todos los que tengan la app abierta.
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Título</label>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={60}
+          placeholder="Ej: ⚽ Novedades en Prode 2026"
+          className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Mensaje</label>
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          rows={4}
+          maxLength={200}
+          placeholder="Contale a los usuarios qué cambió..."
+          className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+        />
+        <p className="text-xs text-gray-400 mt-1 text-right">{message.length}/200</p>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Link al tocar (opcional)</label>
+        <input
+          type="text"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="/dashboard"
+          className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        />
+      </div>
+
+      {/* Vista previa */}
+      <div>
+        <p className="text-xs font-medium text-gray-600 mb-1">Vista previa</p>
+        <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
+          <p className="text-sm font-semibold text-gray-800">{title || "—"}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{message || "—"}</p>
+        </div>
+      </div>
+
+      {result && (
+        result.ok ? (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-700">
+            ✅ Enviado. Push entregado a {result.pushSent} suscripción(es).
+          </div>
+        ) : (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
+            ❌ {result.error}
+          </div>
+        )
+      )}
+
+      <button
+        onClick={handleSend}
+        disabled={sending || !title.trim() || !message.trim()}
+        className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50"
+      >
+        {sending ? "Enviando..." : "📢 Enviar a todos"}
+      </button>
+    </div>
+  );
+};
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 const Admin = () => {
   const [tab, setTab] = useState("users");
@@ -443,6 +544,7 @@ const Admin = () => {
         {tab === "groups" && <GroupsTab />}
         {tab === "awards" && <AwardsTab />}
         {tab === "mvp"    && <MvpTab />}
+        {tab === "announce" && <AnnounceTab />}
       </div>
     </div>
   );

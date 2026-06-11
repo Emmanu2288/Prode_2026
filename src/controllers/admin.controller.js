@@ -5,6 +5,8 @@ import Membership from "../models/Membership.js";
 import Prediction from "../models/Prediction.js";
 import ProcessedFixture from "../models/ProcessedFixture.js";
 import { calculatePointsFinal, applyFinalPointsToPrediction, applyTournamentAwardPoints } from "../services/points.service.js";
+import { sendPushToAll } from "../services/push.service.js";
+import { broadcastAnnouncement } from "../services/notification.service.js";
 
 const API_URL = "https://v3.football.api-sports.io";
 const API_KEY = process.env.FOOTBALL_API_KEY;
@@ -282,6 +284,28 @@ export const setManualMvp = async (req, res) => {
     );
 
     res.json({ mvp: mvpName, predictionsUpdated: updated, finalGoals });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ─── Avisos ──────────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/admin/announce
+ * Envía un aviso a todos los usuarios: notificación push + en tiempo real (campana)
+ */
+export const sendAnnouncement = async (req, res) => {
+  try {
+    const { title, message, url } = req.body;
+    if (!title || !message) {
+      return res.status(400).json({ error: "Faltan título y mensaje" });
+    }
+
+    broadcastAnnouncement({ title, message, url });
+    const pushSent = await sendPushToAll({ title, body: message, url: url || "/" });
+
+    res.json({ pushSent });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

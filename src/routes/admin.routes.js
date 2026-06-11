@@ -8,6 +8,7 @@ import {
   processTournamentAwards,
   getFinishedMatches,
   setManualMvp,
+  sendAnnouncement,
 } from "../controllers/admin.controller.js";
 import { adminGenerateResetLink } from "../controllers/auth.controller.js";
 
@@ -22,6 +23,7 @@ export const initAdminRoutes = (app) => {
   router.get("/finished-matches",    ...admin, getFinishedMatches);
   router.post("/mvp/:fixtureId",     ...admin, setManualMvp);
   router.post("/users/:userId/reset-link", ...admin, adminGenerateResetLink);
+  router.post("/announce",                 ...admin, sendAnnouncement);
 
   app.use("/api/admin", router);
 };

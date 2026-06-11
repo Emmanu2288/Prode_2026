@@ -38,8 +38,21 @@ const useSocket = () => {
 
     socketInstance.on("invitation_received", onInvitation);
 
+    // Escuchar avisos del admin para todos los usuarios
+    const onAnnouncement = (data) => {
+      addNotification({
+        type: "announcement",
+        title: data.title,
+        message: data.message,
+        url: data.url,
+      });
+    };
+
+    socketInstance.on("announcement", onAnnouncement);
+
     return () => {
       socketInstance?.off("invitation_received", onInvitation);
+      socketInstance?.off("announcement", onAnnouncement);
     };
   }, [token, user]);
 

@@ -17,6 +17,7 @@ const NAV_LINKS = [
 
 // ─── Campana de notificaciones ───────────────────────────────
 const NotificationBell = () => {
+  const navigate = useNavigate();
   const { notifications, markAllRead, removeNotification } = useNotificationStore();
   const unread = notifications.filter((n) => !n.read).length;
   const [open, setOpen] = useState(false);
@@ -33,6 +34,11 @@ const NotificationBell = () => {
   };
   const handleReject = async (notif) => {
     try { await rejectInvitation(notif.token); removeNotification(notif.id); } catch {}
+  };
+  const handleAnnouncementClick = (notif) => {
+    if (notif.type !== "announcement" || !notif.url) return;
+    setOpen(false);
+    navigate(notif.url);
   };
 
   return (
@@ -61,7 +67,11 @@ const NotificationBell = () => {
             {notifications.length === 0 ? (
               <p className="text-sm text-muted text-center py-6">Sin notificaciones</p>
             ) : notifications.map((n) => (
-              <div key={n.id} className="px-4 py-3 border-b border-theme">
+              <div
+                key={n.id}
+                onClick={() => handleAnnouncementClick(n)}
+                className={`px-4 py-3 border-b border-theme ${n.type === "announcement" && n.url ? "cursor-pointer hover:bg-green-50/50" : ""}`}
+              >
                 <p className="text-sm font-medium text-primary">{n.title}</p>
                 <p className="text-xs text-secondary mt-0.5">{n.message}</p>
                 {n.type === "invitation" && (
