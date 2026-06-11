@@ -1,5 +1,13 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+import Group from "../models/Group.js";
+import Membership from "../models/Membership.js";
+import Prediction from "../models/Prediction.js";
+import Payment from "../models/Payment.js";
+import PushSubscription from "../models/PushSubscription.js";
+import GroupPoints from "../models/GroupPoints.js";
+import Correction from "../models/Correction.js";
+import Invitation from "../models/Invitation.js";
 
 /**
  * Buscar usuarios por nombre o email (cualquier usuario autenticado)
@@ -94,13 +102,33 @@ export const updateUser = async (req, res) => {
 };
 
 /**
- * Eliminar usuario (solo admin)
+ * Eliminar usuario (solo admin), con borrado en cascada de todos sus datos asociados
  */
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (req.user.id === id) {
+      return res.status(400).json({ message: "No podés eliminar tu propia cuenta" });
+    }
+
+    const ownedGroups = await Group.countDocuments({ owner: id });
+    if (ownedGroups > 0) {
+      return res.status(400).json({ message: "El usuario es dueño de uno o más grupos. Eliminá esos grupos antes de borrar al usuario." });
+    }
+
     const deletedUser = await User.findByIdAndDelete(id);
     if (!deletedUser) return res.status(404).json({ message: "Usuario no encontrado" });
+
+    await Promise.all([
+      Membership.deleteMany({ user: id }),
+      Prediction.deleteMany({ user: id }),
+      Payment.deleteMany({ user: id }),
+      PushSubscription.deleteMany({ user: id }),
+      GroupPoints.deleteMany({ user: id }),
+      Correction.deleteMany({ userId: id }),
+      Invitation.deleteMany({ $or: [{ invitedUser: id }, { inviter: id }] }),
+    ]);
 
     return res.json({ message: "Usuario eliminado correctamente" });
   } catch (err) {

@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import {
   getAdminUsers, getAdminGroups, getTournamentData,
   processTournamentAwards, getFinishedMatches, setManualMvp,
-  generateResetLink, sendAnnouncement,
+  generateResetLink, sendAnnouncement, deleteUser,
 } from "../services/admin.service";
 import { getFixturePlayers } from "../services/match.service";
+import useAuthStore from "../store/authStore";
 
 const TABS = [
   { key: "users",    label: "👥 Usuarios" },
@@ -16,9 +17,11 @@ const TABS = [
 
 // ─── Tab Usuarios ─────────────────────────────────────────────────────────────
 const UsersTab = () => {
+  const currentUser = useAuthStore((s) => s.user);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generatingId, setGeneratingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [resetLinkInfo, setResetLinkInfo] = useState(null);
   const [copied, setCopied] = useState(false);
 
@@ -36,6 +39,21 @@ const UsersTab = () => {
       alert(err.response?.data?.message || "Error al generar el link");
     } finally {
       setGeneratingId(null);
+    }
+  };
+
+  const handleDeleteUser = async (u) => {
+    if (!window.confirm(
+      `¿Eliminar definitivamente a ${u.first_name} ${u.last_name} (${u.email})?\n\nSe borrarán también sus pronósticos, pagos, membresías y notificaciones. Esta acción no se puede deshacer.`
+    )) return;
+    setDeletingId(u._id);
+    try {
+      await deleteUser(u._id);
+      setUsers((prev) => prev.filter((usr) => usr._id !== u._id));
+    } catch (err) {
+      alert(err.response?.data?.message || "Error al eliminar el usuario");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -104,17 +122,26 @@ const UsersTab = () => {
                 <td className="px-4 py-3 text-right text-gray-600">{u.predictionCount ?? 0}</td>
                 <td className="px-4 py-3 text-right font-bold text-green-600">{u.totalPoints ?? 0}</td>
                 <td className="px-4 py-3 text-center">
-                  {u.googleId ? (
-                    <span className="text-xs text-gray-300">—</span>
-                  ) : (
-                    <button
-                      onClick={() => handleResetLink(u)}
-                      disabled={generatingId === u._id}
-                      className="text-xs font-semibold text-yellow-700 bg-yellow-50 hover:bg-yellow-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      {generatingId === u._id ? "..." : "🔑 Reset"}
-                    </button>
-                  )}
+                  <div className="flex items-center justify-center gap-1.5">
+                    {!u.googleId && (
+                      <button
+                        onClick={() => handleResetLink(u)}
+                        disabled={generatingId === u._id}
+                        className="text-xs font-semibold text-yellow-700 bg-yellow-50 hover:bg-yellow-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {generatingId === u._id ? "..." : "🔑 Reset"}
+                      </button>
+                    )}
+                    {u._id !== currentUser?._id && u._id !== currentUser?.id && (
+                      <button
+                        onClick={() => handleDeleteUser(u)}
+                        disabled={deletingId === u._id}
+                        className="text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {deletingId === u._id ? "..." : "🗑️ Eliminar"}
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

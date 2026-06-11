@@ -11,6 +11,7 @@ import {
   toggleMemberEnabled,
   deleteGroup,
   inviteToGroup,
+  addGroupMember,
   updateGroup,
 } from "../services/group.service";
 import useMatches from "../hooks/useMatches";
@@ -40,6 +41,7 @@ const GroupDetail = () => {
   const [searching, setSearching] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [inviting, setInviting] = useState(false);
+  const [addingDirectId, setAddingDirectId] = useState(null);
   const [inviteMsg, setInviteMsg] = useState(null);
 
   // Invitar a la app (link externo)
@@ -101,6 +103,24 @@ const GroupDetail = () => {
       setInviteMsg({ type: "error", text: "Error al enviar la invitación." });
     } finally {
       setInviting(false);
+    }
+  };
+
+  // Sumar al grupo directamente, sin pasar por invitación (admin/owner)
+  const handleAddDirect = async (userId) => {
+    setAddingDirectId(userId);
+    setInviteMsg(null);
+    try {
+      await addGroupMember(groupId, userId);
+      setInviteMsg({ type: "ok", text: "✅ Usuario agregado al grupo directamente." });
+      setSearchQuery("");
+      setSearchResults([]);
+      const membersRes = await getGroupMembers(groupId);
+      setMembers(membersRes.data);
+    } catch (err) {
+      setInviteMsg({ type: "error", text: err.response?.data?.message || "Error al agregar al usuario." });
+    } finally {
+      setAddingDirectId(null);
     }
   };
 
@@ -536,13 +556,25 @@ const GroupDetail = () => {
                       <p className="text-sm font-medium text-gray-800">{u.first_name} {u.last_name}</p>
                       <p className="text-xs text-gray-400">{u.email}</p>
                     </div>
-                    <button
-                      onClick={() => handleInviteUser(u._id)}
-                      disabled={inviting}
-                      className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      {inviting ? "..." : "Invitar"}
-                    </button>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {(isOwner || user?.role === "admin") && (
+                        <button
+                          onClick={() => handleAddDirect(u._id)}
+                          disabled={addingDirectId === u._id}
+                          title="Agregar directamente al grupo, sin enviar invitación"
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {addingDirectId === u._id ? "..." : "+ Directo"}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleInviteUser(u._id)}
+                        disabled={inviting}
+                        className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {inviting ? "..." : "Invitar"}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -91,19 +91,57 @@ const NotificationBell = () => {
   );
 };
 
+// ─── Ayuda para instalar (fallback cuando el navegador no ofrece el prompt nativo) ───
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+const InstallHelpModal = ({ onClose }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
+    <div className="bg-card rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
+      <div className="text-5xl mb-3">📲</div>
+      <h2 className="text-lg font-bold text-primary mb-3">Instalar Prode 2026</h2>
+      {isIOS ? (
+        <ol className="text-left text-sm text-secondary space-y-2 list-decimal list-inside">
+          <li>Tocá el botón <strong>Compartir</strong> (el cuadrado con la flecha hacia arriba) en la barra de Safari.</li>
+          <li>Elegí <strong>"Agregar a pantalla de inicio"</strong>.</li>
+          <li>Confirmá tocando <strong>"Agregar"</strong>.</li>
+        </ol>
+      ) : (
+        <ol className="text-left text-sm text-secondary space-y-2 list-decimal list-inside">
+          <li>Abrí el menú <strong>⋮</strong> de tu navegador (arriba a la derecha).</li>
+          <li>Elegí <strong>"Instalar app"</strong> o <strong>"Agregar a pantalla de inicio"</strong>.</li>
+          <li>Confirmá la instalación.</li>
+        </ol>
+      )}
+      <button
+        onClick={onClose}
+        className="mt-5 w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors"
+      >
+        Entendido
+      </button>
+    </div>
+  </div>
+);
+
 // ─── Navbar principal ─────────────────────────────────────────
 const Navbar = () => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [dark, setDark] = useDarkMode();
-  const { canInstall, install } = useInstallPrompt();
+  const { canInstall, installed, install } = useInstallPrompt();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
 
   const handleLogout = async () => {
     setMenuOpen(false);
     await logout();
     navigate("/login");
+  };
+
+  const handleInstallClick = () => {
+    setMenuOpen(false);
+    if (canInstall) install();
+    else setShowInstallHelp(true);
   };
 
   // Cerrar menú al cambiar de ruta
@@ -138,9 +176,9 @@ const Navbar = () => {
                 style={{ padding: "4px 14px", borderRadius: "999px", fontSize: "12px", fontWeight: "700", background: "#facc15", color: "#000" }}
                 className="hover:opacity-90 transition-opacity">Admin</Link>
             )}
-            {canInstall && (
+            {!installed && (
               <button
-                onClick={install}
+                onClick={handleInstallClick}
                 style={{ padding: "4px 14px", borderRadius: "999px", fontSize: "12px", fontWeight: "600", background: "#fff", color: "#166534", display: "flex", alignItems: "center", gap: "5px" }}
                 className="hover:opacity-90 transition-opacity"
                 title="Instalar app"
@@ -210,9 +248,9 @@ const Navbar = () => {
                 ⭐ Admin
               </Link>
             )}
-            {canInstall && (
+            {!installed && (
               <button
-                onClick={install}
+                onClick={handleInstallClick}
                 className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-white text-green-800 font-semibold text-sm mt-1 hover:opacity-90 transition-opacity"
               >
                 📲 Instalar app en el celular
@@ -231,6 +269,8 @@ const Navbar = () => {
           </div>
         </div>
       )}
+
+      {showInstallHelp && <InstallHelpModal onClose={() => setShowInstallHelp(false)} />}
     </>
   );
 };

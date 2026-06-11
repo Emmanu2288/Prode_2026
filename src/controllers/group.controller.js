@@ -2,6 +2,7 @@ import Group from "../models/Group.js";
 import Membership from "../models/Membership.js";
 import Prediction from "../models/Prediction.js";
 import Payment from "../models/Payment.js";
+import User from "../models/User.js";
 import { inviteToGroup as inviteToGroupController } from "./invitation.controller.js";
 
 // Eliminar grupo (solo owner)
@@ -154,6 +155,38 @@ export const inviteToGroup = async (req, res) => {
 };
 
 /**
+ * Agregar un usuario directamente al grupo, sin pasar por invitación
+ * (solo admin global o el owner del grupo). Útil para sumar gente que
+ * rechazó/ignoró una invitación por error.
+ */
+export const addMemberDirect = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ message: "userId es requerido" });
+
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ message: "Grupo no encontrado" });
+
+    if (req.user.role !== "admin" && group.owner.toString() !== req.user.id) {
+      return res.status(403).json({ message: "No tenés permiso para agregar miembros a este grupo" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
+
+    const existing = await Membership.findOne({ group: groupId, user: userId });
+    if (existing) return res.status(400).json({ message: "El usuario ya es miembro del grupo" });
+
+    const membership = await Membership.create({ group: groupId, user: userId, roleInGroup: "member" });
+    return res.status(201).json({ message: "Usuario agregado al grupo", membership });
+  } catch (err) {
+    console.error("addMemberDirect error:", err);
+    return res.status(500).json({ message: "Error al agregar miembro al grupo" });
+  }
+};
+
+/**
  * Listar miembros de un grupo
  */
 export const getGroupMembers = async (req, res) => {
@@ -170,5 +203,6 @@ export const getGroupMembers = async (req, res) => {
 export default {
   createGroup,
   inviteToGroup,
-  getGroupMembers
+  getGroupMembers,
+  addMemberDirect
 };

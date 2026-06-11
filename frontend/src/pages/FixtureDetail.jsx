@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import useMatches from "../hooks/useMatches";
 import { getFixtureEvents } from "../services/match.service";
-import { loadFootballWidgets } from "../utils/footballWidgets";
 
 const LIVE_STATUSES = new Set(["1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT"]);
 const FINISHED_STATUSES = new Set(["FT", "AET", "PEN"]);
@@ -30,10 +29,6 @@ const FixtureDetail = () => {
   const { matches, loading } = useMatches();
   const match = matches.find((m) => String(m.fixture.id) === String(id));
   const [events, setEvents] = useState([]);
-
-  useEffect(() => {
-    loadFootballWidgets();
-  }, []);
 
   const status = match?.fixture.status.short;
   const isLive = status && LIVE_STATUSES.has(status);
@@ -131,19 +126,6 @@ const FixtureDetail = () => {
           )}
         </div>
       )}
-
-      <div className="bg-card rounded-xl border border-gray-100 p-4">
-        <div
-          id="wg-api-football-game"
-          data-host="v3.football.api-sports.io"
-          data-key={import.meta.env.VITE_FOOTBALL_API_KEY}
-          data-id={id}
-          data-theme=""
-          data-show-errors="false"
-          data-show-logos="true"
-          className="wg_loader"
-        />
-      </div>
     </div>
   );
 };

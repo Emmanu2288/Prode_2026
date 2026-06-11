@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createGroup, inviteToGroup, getGroupMembers, getMyGroups, getGroupById, getGroupPredictions, deleteGroup, updateGroup } from "../controllers/group.controller.js";
+import { createGroup, inviteToGroup, getGroupMembers, addMemberDirect, getMyGroups, getGroupById, getGroupPredictions, deleteGroup, updateGroup } from "../controllers/group.controller.js";
 import { getGroupLeaderboard } from "../controllers/groupPoints.controller.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
 import { roleMiddleware } from "../middlewares/role.middleware.js";
@@ -24,6 +24,9 @@ export const initGroupRoutes = (app) => {
 
   // Listar miembros de un grupo
   router.get("/:groupId/members", verifyToken, getGroupMembers);
+
+  // Agregar un usuario directamente al grupo, sin invitación (admin u owner)
+  router.post("/:groupId/members", verifyToken, addMemberDirect);
 
   // Leaderboard del grupo
   router.get("/:groupId/leaderboard", verifyToken, getGroupLeaderboard);
