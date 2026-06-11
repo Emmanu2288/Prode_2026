@@ -4,6 +4,7 @@ import useAuthStore from "../store/authStore";
 import useMatches from "../hooks/useMatches";
 import { getMyPredictions } from "../services/prediction.service";
 import { getMyGroups, getGroupLeaderboard, getPendingInvitations, acceptInvitation, rejectInvitation } from "../services/group.service";
+import { loadFootballWidgets } from "../utils/footballWidgets";
 
 // Días hasta el inicio del Mundial
 const getDaysToWorldCup = () => {
@@ -11,6 +12,12 @@ const getDaysToWorldCup = () => {
   const now = new Date();
   const diff = Math.ceil((start - now) / (1000 * 60 * 60 * 24));
   return diff > 0 ? diff : 0;
+};
+
+// Fecha de hoy en formato YYYY-MM-DD (zona horaria local)
+const getTodayStr = () => {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
 };
 
 const StatCard = ({ value, label, image, overlay }) => {
@@ -95,14 +102,7 @@ const Dashboard = () => {
 
   // Cargar widget script de api-football
   useEffect(() => {
-    const scriptId = "api-football-widget-script";
-    if (!document.getElementById(scriptId)) {
-      const script = document.createElement("script");
-      script.id = scriptId;
-      script.src = "https://widgets.api-sports.io/2.0.3/widgets.js";
-      script.async = true;
-      document.body.appendChild(script);
-    }
+    loadFootballWidgets();
   }, []);
 
   // Partidos NS sin pronosticar
@@ -339,6 +339,7 @@ const Dashboard = () => {
           id="wg-api-football-games"
           data-host="v3.football.api-sports.io"
           data-key={import.meta.env.VITE_FOOTBALL_API_KEY}
+          data-date={getTodayStr()}
           data-league="1"
           data-season="2026"
           data-theme=""

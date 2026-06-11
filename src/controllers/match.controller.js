@@ -106,3 +106,26 @@ export const getFixturePlayers = async (req, res) => {
     return res.status(500).json({ error: "Error al obtener jugadores" });
   }
 };
+
+/**
+ * Devuelve los últimos enfrentamientos directos entre dos equipos.
+ */
+export const getHeadToHead = async (req, res) => {
+  try {
+    const { team1, team2 } = req.query;
+    if (!team1 || !team2) {
+      return res.status(400).json({ error: "Faltan team1 y team2" });
+    }
+
+    const response = await axios.get(`${API_URL}/fixtures/headtohead`, {
+      params: { h2h: `${team1}-${team2}`, last: 5, status: "FT-AET-PEN" },
+      headers: { "x-apisports-key": API_KEY },
+      timeout: 8000,
+    });
+
+    return res.json(response.data?.response || []);
+  } catch (err) {
+    console.error("getHeadToHead error:", err.message);
+    return res.status(500).json({ error: "Error al obtener historial entre equipos" });
+  }
+};

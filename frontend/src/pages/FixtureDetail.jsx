@@ -1,20 +1,13 @@
 import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { loadFootballWidgets } from "../utils/footballWidgets";
 
 const FixtureDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Carga el script del widget de api-football si no está ya
-    const scriptId = "api-football-widget-script";
-    if (!document.getElementById(scriptId)) {
-      const script = document.createElement("script");
-      script.id = scriptId;
-      script.src = "https://widgets.api-sports.io/2.0.3/widgets.js";
-      script.async = true;
-      document.body.appendChild(script);
-    }
+    loadFootballWidgets();
   }, []);
 
   return (

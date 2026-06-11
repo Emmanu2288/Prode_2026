@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { createPrediction, updatePrediction, getMyPredictions } from "../services/prediction.service";
-import { getFixturePlayers } from "../services/match.service";
+import { getFixturePlayers, getHeadToHead } from "../services/match.service";
 
 const ScoreInput = ({ value, onChange, label }) => (
   <div className="flex flex-col items-center gap-2">
@@ -32,6 +32,8 @@ const NewPrediction = () => {
   const [mvpPlayer, setMvpPlayer] = useState("");
   const [players, setPlayers] = useState(null);
   const [loadingPlayers, setLoadingPlayers] = useState(false);
+  const [h2h, setH2h] = useState([]);
+  const [loadingH2h, setLoadingH2h] = useState(false);
   const [mvpTeam, setMvpTeam] = useState(null); // "home" | "away" | null
   const [mvpSearch, setMvpSearch] = useState("");
   const [loading, setLoading] = useState(false);
@@ -104,16 +106,14 @@ const NewPrediction = () => {
       .finally(() => setLoadingPlayers(false));
   }, []);
 
-  // Carga el script del widget de api-football si no está ya
+  // Cargar historial de enfrentamientos directos entre ambos equipos
   useEffect(() => {
-    const scriptId = "api-football-widget-script";
-    if (!document.getElementById(scriptId)) {
-      const script = document.createElement("script");
-      script.id = scriptId;
-      script.src = "https://widgets.api-sports.io/2.0.3/widgets.js";
-      script.async = true;
-      document.body.appendChild(script);
-    }
+    if (!match) return;
+    setLoadingH2h(true);
+    getHeadToHead(teams.home.id, teams.away.id)
+      .then((res) => setH2h(res.data || []))
+      .catch(() => setH2h([]))
+      .finally(() => setLoadingH2h(false));
   }, []);
 
   if (checkingExisting) {
@@ -177,20 +177,38 @@ const NewPrediction = () => {
           {/* Historial entre los equipos (H2H) */}
           <div className="bg-card rounded-xl border border-gray-100 p-4 mb-6">
             <p className="text-center text-xs text-gray-400 uppercase tracking-widest mb-3 font-medium">
-              📊 Historial entre los equipos
+              📊 Últimos enfrentamientos
             </p>
-            <div
-              id="wg-api-football-h2h"
-              data-host="v3.football.api-sports.io"
-              data-key={import.meta.env.VITE_FOOTBALL_API_KEY}
-              data-date={fixture.date.split("T")[0]}
-              data-team-a={teams.home.id}
-              data-team-b={teams.away.id}
-              data-theme=""
-              data-show-errors="false"
-              data-show-logos="true"
-              className="wg_loader"
-            />
+            {loadingH2h ? (
+              <p className="text-center text-xs text-gray-400 py-3">Cargando historial...</p>
+            ) : h2h.length === 0 ? (
+              <p className="text-center text-xs text-gray-400 py-3">Sin enfrentamientos previos registrados</p>
+            ) : (
+              <div className="space-y-2">
+                {h2h.map((m) => (
+                  <div key={m.fixture.id} className="flex items-center text-xs py-1.5 border-b border-gray-50 last:border-0">
+                    <span className="text-gray-400 w-12 flex-shrink-0">
+                      {new Date(m.fixture.date).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
+                      <span className={`truncate ${m.teams.home.winner ? "font-semibold text-gray-700" : "text-gray-400"}`}>
+                        {m.teams.home.name}
+                      </span>
+                      <img src={m.teams.home.logo} alt="" className="w-4 h-4 object-contain flex-shrink-0" />
+                    </div>
+                    <span className="font-bold text-gray-700 px-2 flex-shrink-0">
+                      {m.goals.home} - {m.goals.away}
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                      <img src={m.teams.away.logo} alt="" className="w-4 h-4 object-contain flex-shrink-0" />
+                      <span className={`truncate ${m.teams.away.winner ? "font-semibold text-gray-700" : "text-gray-400"}`}>
+                        {m.teams.away.name}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Marcador */}
