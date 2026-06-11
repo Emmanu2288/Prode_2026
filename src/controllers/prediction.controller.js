@@ -8,7 +8,7 @@ const API_KEY = process.env.FOOTBALL_API_KEY;
 // Crear predicción partido a partido (resultado + MVP)
 export const createPrediction = async (req, res) => {
   try {
-    const { match, predictedScore, mvpPlayer } = req.body;
+    const { match, predictedScore, mvpPlayer, kickoff } = req.body;
     const userId = req.user.id;
 
     const blocked = await Membership.exists({ user: userId, enabled: false });
@@ -18,6 +18,12 @@ export const createPrediction = async (req, res) => {
 
     if (!match) {
       return res.status(400).json({ error: "Faltan datos: match es requerido." });
+    }
+
+    // Chequeo primario por horario de kickoff: no depende de la API externa,
+    // así seguimos bloqueando aunque la API de fútbol falle o esté rate-limited
+    if (kickoff && new Date() >= new Date(kickoff)) {
+      return res.status(400).json({ error: "El partido ya comenzó, no se puede modificar la apuesta." });
     }
 
     // Consultar estado del partido en la API para validar y obtener el matchId externo
@@ -79,12 +85,17 @@ export const createPrediction = async (req, res) => {
 export const updatePrediction = async (req, res) => {
   try {
     const { matchId } = req.params;
-    const { predictedScore, mvpPlayer } = req.body;
+    const { predictedScore, mvpPlayer, kickoff } = req.body;
     const userId = req.user.id;
 
     const blocked = await Membership.exists({ user: userId, enabled: false });
     if (blocked) {
       return res.status(403).json({ error: "🔒 Todavía no podés pronosticar: falta confirmar tu pago. Si ya transferiste, avisale a tu admin para que te habilite." });
+    }
+
+    // Chequeo primario por horario de kickoff: no depende de la API externa
+    if (kickoff && new Date() >= new Date(kickoff)) {
+      return res.status(400).json({ error: "El partido ya comenzó, no se puede modificar el pronóstico." });
     }
 
     // Verificar estado del partido

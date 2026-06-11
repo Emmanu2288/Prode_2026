@@ -48,6 +48,12 @@ const NewPrediction = () => {
   const league  = match?.league;
   const fixtureId = fixture?.id;
 
+  // Determina si el partido ya empezó (por status o por horario de kickoff)
+  const isMatchStarted = () =>
+    (fixture?.status?.short && fixture.status.short !== "NS") ||
+    (fixture?.date && new Date() >= new Date(fixture.date));
+  const matchStarted = isMatchStarted();
+
   // Al cargar, verificar si ya hay un pronóstico para este partido
   useEffect(() => {
     if (!fixtureId) { setCheckingExisting(false); return; }
@@ -82,12 +88,16 @@ const NewPrediction = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isMatchStarted()) {
+      setError("El partido ya comenzó, no se puede cargar ni modificar el pronóstico.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const score = `${homeGoals}-${awayGoals}`;
       // El backend hace upsert: crea si no existe, actualiza si ya existe
-      await createPrediction({ match: fixtureId, predictedScore: score, mvpPlayer });
+      await createPrediction({ match: fixtureId, predictedScore: score, mvpPlayer, kickoff: fixture.date });
       navigate("/predictions", { state: { success: true } });
     } catch (err) {
       const msg = err.response?.data?.error || "Error al guardar el pronóstico";
@@ -213,6 +223,23 @@ const NewPrediction = () => {
           </div>
 
           {/* Marcador */}
+          {matchStarted ? (
+            <div className="text-center py-6">
+              <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500 mb-4">
+                ⏱️ Este partido ya comenzó, no se puede cargar ni modificar el pronóstico.
+              </div>
+              {existingPrediction ? (
+                <div className="bg-green-50 border border-green-100 rounded-xl py-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-widest mb-1">Tu pronóstico quedó</p>
+                  <span className="text-green-700 font-bold text-2xl">{homeGoals} — {awayGoals}</span>
+                </div>
+              ) : (
+                <p className="text-gray-400 text-sm">
+                  No llegaste a cargar un pronóstico — quedó <strong>0-0</strong> por defecto.
+                </p>
+              )}
+            </div>
+          ) : (
           <form onSubmit={handleSubmit}>
             <p className="text-center text-xs text-gray-400 uppercase tracking-widest mb-5 font-medium">
               Tu pronóstico
@@ -369,6 +396,7 @@ const NewPrediction = () => {
               {loading ? "Guardando..." : existingPrediction ? "✏️ Actualizar pronóstico" : "⚽ Confirmar pronóstico"}
             </button>
           </form>
+          )}
         </div>
       </div>
     </div>
