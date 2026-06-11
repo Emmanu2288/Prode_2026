@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { getMyPredictions } from "../services/prediction.service";
 import useMatches from "../hooks/useMatches";
+import BallIcon from "../components/BallIcon";
 
 const statusColor = (points, status) => {
   if (status === "NS") return "bg-gray-100 text-gray-500";
@@ -44,7 +45,7 @@ const Predictions = () => {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <div className="text-4xl mb-3 animate-bounce">⚽</div>
+          <BallIcon className="w-9 h-9 mb-3 animate-bounce" />
           <p className="text-gray-500 text-sm">Cargando pronósticos...</p>
         </div>
       </div>

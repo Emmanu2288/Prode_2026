@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import useAuthStore from "../store/authStore";
+import BallIcon from "../components/BallIcon";
 
 const Register = () => {
   const [searchParams] = useSearchParams();
@@ -35,7 +36,7 @@ const Register = () => {
     <div className="min-h-screen bg-green-700 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <span className="text-5xl">⚽</span>
+          <BallIcon className="w-12 h-12" />
           <h1 className="text-2xl font-bold text-gray-800 mt-2">Crear cuenta</h1>
           {inviteToken && (
             <p className="text-green-600 text-sm mt-1 font-medium">

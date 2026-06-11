@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyGroups, getPendingInvitations, acceptInvitation, rejectInvitation } from "../services/group.service";
 import useAuthStore from "../store/authStore";
+import BallIcon from "../components/BallIcon";
 
 const Groups = () => {
   const [groups, setGroups] = useState([]);
@@ -64,7 +65,7 @@ const Groups = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-4xl animate-bounce">⚽</div>
+        <BallIcon className="w-9 h-9 animate-bounce" />
       </div>
     );
   }

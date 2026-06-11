@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import useAuthStore from "../store/authStore";
+import BallIcon from "../components/BallIcon";
 
 /**
  * Página intermedia que maneja el redirect de Google OAuth.
@@ -30,7 +31,7 @@ const AuthCallback = () => {
   return (
     <div className="min-h-screen bg-green-700 flex items-center justify-center">
       <div className="text-center text-white">
-        <div className="text-5xl mb-4 animate-bounce">⚽</div>
+        <BallIcon className="w-12 h-12 mb-4 animate-bounce" />
         <p className="text-lg font-medium">Iniciando sesión con Google...</p>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import useMatches from "../hooks/useMatches";
 import { getExtras, saveExtras } from "../services/prediction.service";
+import BallIcon from "../components/BallIcon";
 
 const KNOCKOUT_DATE = new Date("2026-06-27T00:00:00");
 
@@ -194,7 +195,7 @@ const Extras = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-4xl animate-bounce">⚽</div>
+        <BallIcon className="w-9 h-9 animate-bounce" />
       </div>
     );
   }

@@ -3,6 +3,7 @@ import useMatches from "../hooks/useMatches";
 import useLiveMatches from "../hooks/useLiveMatches";
 import MatchCard from "../components/fixtures/MatchCard";
 import RoundFilter from "../components/fixtures/RoundFilter";
+import BallIcon from "../components/BallIcon";
 
 const Fixtures = () => {
   const { matches: initialMatches, rounds, nextRound, loading, error } = useMatches();
@@ -28,7 +29,7 @@ const Fixtures = () => {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
-          <div className="text-4xl mb-3 animate-bounce">⚽</div>
+          <BallIcon className="w-9 h-9 mb-3 animate-bounce" />
           <p className="text-gray-500 text-sm">Cargando partidos...</p>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import useAuthStore from "../store/authStore";
+import BallIcon from "../components/BallIcon";
 
 const Leaderboard = () => {
   const [users, setUsers] = useState([]);
@@ -40,7 +41,7 @@ const Leaderboard = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-4xl animate-bounce">⚽</div>
+        <BallIcon className="w-9 h-9 animate-bounce" />
       </div>
     );
   }

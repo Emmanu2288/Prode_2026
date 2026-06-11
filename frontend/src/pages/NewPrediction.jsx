@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { createPrediction, updatePrediction, getMyPredictions } from "../services/prediction.service";
 import { getFixturePlayers, getHeadToHead } from "../services/match.service";
+import BallIcon from "../components/BallIcon";
 
 const ScoreInput = ({ value, onChange, label }) => (
   <div className="flex flex-col items-center gap-2">
@@ -119,7 +120,7 @@ const NewPrediction = () => {
   if (checkingExisting) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-4xl animate-bounce">⚽</div>
+        <BallIcon className="w-9 h-9 animate-bounce" />
       </div>
     );
   }

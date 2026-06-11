@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import useAuthStore from "../store/authStore";
+import BallIcon from "../components/BallIcon";
 
 const Login = () => {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -29,7 +30,7 @@ const Login = () => {
     <div className="min-h-screen bg-green-700 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <span className="text-5xl">⚽</span>
+          <BallIcon className="w-12 h-12" />
           <h1 className="text-2xl font-bold text-gray-800 mt-2">Prode 2026</h1>
           <p className="text-gray-500 text-sm mt-1">Iniciá sesión para continuar</p>
         </div>

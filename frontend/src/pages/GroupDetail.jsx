@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import BallIcon from "../components/BallIcon";
 import {
   getGroupById,
   getGroupMembers,
@@ -138,7 +139,7 @@ const GroupDetail = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-4xl animate-bounce">⚽</div>
+        <BallIcon className="w-9 h-9 animate-bounce" />
       </div>
     );
   }
@@ -325,7 +326,7 @@ const GroupDetail = () => {
             })}
           {matches.filter(m => groupPredictions[String(m.fixture.id)]).length === 0 && (
             <div className="text-center py-12 text-gray-400">
-              <span className="text-4xl">⚽</span>
+              <BallIcon className="w-9 h-9" />
               <p className="mt-2 text-sm">Ningún miembro ha pronosticado partidos todavía</p>
             </div>
           )}

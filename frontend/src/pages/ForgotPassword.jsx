@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../services/api";
+import BallIcon from "../components/BallIcon";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -26,7 +27,7 @@ const ForgotPassword = () => {
     <div className="min-h-screen bg-green-700 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <span className="text-5xl">⚽</span>
+          <BallIcon className="w-12 h-12" />
           <h1 className="text-2xl font-bold text-gray-800 mt-2">Recuperar contraseña</h1>
           <p className="text-gray-500 text-sm mt-1">Te enviamos un link a tu email</p>
         </div>
