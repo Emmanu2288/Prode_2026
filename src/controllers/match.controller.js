@@ -107,6 +107,38 @@ export const getFixturePlayers = async (req, res) => {
   }
 };
 
+// Cache en memoria para no repetir la consulta a la API por cada usuario
+// que tiene la pantalla del partido abierta (todos comparten el mismo dato)
+const eventsCache = new Map(); // fixtureId -> { data, ts }
+const EVENTS_CACHE_TTL = 45_000;
+
+/**
+ * Devuelve los eventos de un fixture (goles, tarjetas, cambios).
+ */
+export const getFixtureEvents = async (req, res) => {
+  try {
+    const { fixtureId } = req.params;
+
+    const cached = eventsCache.get(fixtureId);
+    if (cached && Date.now() - cached.ts < EVENTS_CACHE_TTL) {
+      return res.json(cached.data);
+    }
+
+    const response = await axios.get(`${API_URL}/fixtures/events`, {
+      params: { fixture: fixtureId },
+      headers: { "x-apisports-key": API_KEY },
+      timeout: 8000,
+    });
+
+    const data = response.data?.response || [];
+    eventsCache.set(fixtureId, { data, ts: Date.now() });
+    return res.json(data);
+  } catch (err) {
+    console.error("getFixtureEvents error:", err.message);
+    return res.status(500).json({ error: "Error al obtener eventos del partido" });
+  }
+};
+
 /**
  * Devuelve los últimos enfrentamientos directos entre dos equipos.
  */

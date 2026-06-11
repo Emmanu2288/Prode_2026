@@ -1,16 +1,35 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import useMatches from "../hooks/useMatches";
+import { getFixtureEvents } from "../services/match.service";
 import { loadFootballWidgets } from "../utils/footballWidgets";
 
 const LIVE_STATUSES = new Set(["1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT"]);
 const FINISHED_STATUSES = new Set(["FT", "AET", "PEN"]);
+
+const EVENT_ICONS = {
+  "Normal Goal": "⚽",
+  "Penalty": "⚽",
+  "Own Goal": "⚽",
+  "Missed Penalty": "❌",
+  "Yellow Card": "🟨",
+  "Red Card": "🟥",
+};
+
+const eventLabel = (e) => {
+  if (e.detail === "Own Goal") return `${e.player?.name} (en contra)`;
+  if (e.detail === "Penalty") return `${e.player?.name} (penal)`;
+  if (e.detail === "Missed Penalty") return `${e.player?.name} (penal errado)`;
+  if (e.detail?.includes("Second Yellow")) return `${e.player?.name} (2da amarilla)`;
+  return e.player?.name;
+};
 
 const FixtureDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { matches, loading } = useMatches();
   const match = matches.find((m) => String(m.fixture.id) === String(id));
+  const [events, setEvents] = useState([]);
 
   useEffect(() => {
     loadFootballWidgets();
@@ -19,6 +38,23 @@ const FixtureDetail = () => {
   const status = match?.fixture.status.short;
   const isLive = status && LIVE_STATUSES.has(status);
   const isFinished = status && FINISHED_STATUSES.has(status);
+
+  // Eventos del partido (goles, tarjetas): solo si ya arrancó, con polling mientras está en vivo
+  useEffect(() => {
+    if (!id || !status || status === "NS") return;
+    const fetchEvents = () => {
+      getFixtureEvents(id)
+        .then((res) => setEvents(res.data || []))
+        .catch(() => setEvents([]));
+    };
+    fetchEvents();
+    if (LIVE_STATUSES.has(status)) {
+      const interval = setInterval(fetchEvents, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [id, status]);
+
+  const matchEvents = events.filter((e) => e.type === "Goal" || e.type === "Card");
 
   return (
     <div className="space-y-5">
@@ -69,6 +105,29 @@ const FixtureDetail = () => {
             <p className="text-center text-xs text-gray-400 mt-3">
               📍 {match.fixture.venue.name}{match.fixture.venue.city ? `, ${match.fixture.venue.city}` : ""}
             </p>
+          )}
+
+          {(isLive || isFinished) && matchEvents.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-center text-xs text-gray-400 uppercase tracking-widest mb-3 font-medium">
+                ⚡ Incidencias
+              </p>
+              <div className="space-y-1.5">
+                {matchEvents.map((e, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    <span className="text-xs text-gray-400 w-9 flex-shrink-0">
+                      {e.time?.elapsed}{e.time?.extra ? `+${e.time.extra}` : ""}'
+                    </span>
+                    <img src={e.team?.logo} alt="" className="w-4 h-4 object-contain flex-shrink-0" />
+                    <span className="flex-shrink-0">{EVENT_ICONS[e.detail] || (e.type === "Card" ? "🟨" : "⚽")}</span>
+                    <span className="text-gray-700 font-medium truncate">{eventLabel(e)}</span>
+                    {e.type === "Goal" && e.assist?.name && (
+                      <span className="text-gray-400 text-xs truncate">(asist. {e.assist.name})</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       )}
