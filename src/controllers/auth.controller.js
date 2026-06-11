@@ -6,7 +6,13 @@ import Invitation from "../models/Invitation.js";
 import Membership from "../models/Membership.js";
 import Group from "../models/Group.js";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy: evita que el proceso crashee al arrancar si RESEND_API_KEY no está seteada
+// (en local, dotenv.config() corre después de evaluar los imports por el orden de ESM)
+let resendClient = null;
+const getResend = () => {
+  if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
+  return resendClient;
+};
 
 const COOKIE_NAME = "authToken";
 
@@ -182,10 +188,24 @@ export const getProfile = async (req, res) => {
  * Útil para que el frontend sepa si el usuario sigue logueado al refrescar la página.
  */
 /**
+ * Genera un token de reseteo seguro, lo guarda en el usuario y devuelve la URL de reseteo.
+ * Compartido entre forgotPassword (auto-envío) y adminGenerateResetLink (fallback manual).
+ */
+const generateResetToken = async (user) => {
+  const token = crypto.randomBytes(32).toString("hex");
+  user.passwordResetToken   = token;
+  user.passwordResetExpires = new Date(Date.now() + 1000 * 60 * 60); // 1 hora
+  await user.save();
+  return `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+};
+
+/**
  * POST /api/auth/forgot-password
  * Genera token de reseteo y envía email con Resend
  */
 export const forgotPassword = async (req, res) => {
+  const genericMessage = "Si el email existe, te enviamos un link para restablecer tu contraseña. Si no te llega en unos minutos (revisá spam), pedile a un admin del grupo que te genere un link manualmente.";
+
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: "Email requerido" });
@@ -193,18 +213,12 @@ export const forgotPassword = async (req, res) => {
     const user = await User.findOne({ email: email.toLowerCase().trim() });
     // Siempre responder OK para no revelar si el email existe
     if (!user || user.googleId) {
-      return res.json({ message: "Si el email existe, recibirás un link en minutos." });
+      return res.json({ message: genericMessage });
     }
 
-    // Generar token seguro
-    const token = crypto.randomBytes(32).toString("hex");
-    user.passwordResetToken   = token;
-    user.passwordResetExpires = new Date(Date.now() + 1000 * 60 * 60); // 1 hora
-    await user.save();
+    const resetUrl = await generateResetToken(user);
 
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-
-    await resend.emails.send({
+    const { error } = await getResend().emails.send({
       from:    "Prode 2026 <onboarding@resend.dev>",
       to:      user.email,
       subject: "🔑 Recuperar contraseña — Prode 2026",
@@ -222,7 +236,11 @@ export const forgotPassword = async (req, res) => {
       `,
     });
 
-    return res.json({ message: "Si el email existe, recibirás un link en minutos." });
+    if (error) {
+      console.error(`forgotPassword: Resend no pudo enviar el email a ${user.email}:`, error);
+    }
+
+    return res.json({ message: genericMessage });
   } catch (err) {
     console.error("forgotPassword error:", err);
     return res.status(500).json({ message: "Error al procesar la solicitud" });
@@ -255,6 +273,28 @@ export const resetPassword = async (req, res) => {
   } catch (err) {
     console.error("resetPassword error:", err);
     return res.status(500).json({ message: "Error al resetear la contraseña" });
+  }
+};
+
+/**
+ * POST /api/admin/users/:userId/reset-link  (solo admin)
+ * Genera un link de reseteo de contraseña para pasarle manualmente al usuario,
+ * útil cuando el email de recuperación no llega (ej: limitaciones del dominio sandbox de Resend).
+ */
+export const adminGenerateResetLink = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
+    if (user.googleId) {
+      return res.status(400).json({ message: "Este usuario inicia sesión con Google y no tiene contraseña" });
+    }
+
+    const resetUrl = await generateResetToken(user);
+    return res.json({ resetUrl });
+  } catch (err) {
+    console.error("adminGenerateResetLink error:", err);
+    return res.status(500).json({ message: "Error al generar el link" });
   }
 };
 

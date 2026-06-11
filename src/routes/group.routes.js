@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createGroup, inviteToGroup, getGroupMembers, getMyGroups, getGroupById, getGroupPredictions, deleteGroup } from "../controllers/group.controller.js";
+import { createGroup, inviteToGroup, getGroupMembers, getMyGroups, getGroupById, getGroupPredictions, deleteGroup, updateGroup } from "../controllers/group.controller.js";
 import { getGroupLeaderboard } from "../controllers/groupPoints.controller.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
 import { roleMiddleware } from "../middlewares/role.middleware.js";
@@ -15,6 +15,9 @@ export const initGroupRoutes = (app) => {
 
   // Detalle de un grupo
   router.get("/:groupId", verifyToken, getGroupById);
+
+  // Actualizar configuración del grupo (solo admin) — ej: monto por pago
+  router.patch("/:groupId", verifyToken, roleMiddleware(["admin"]), updateGroup);
 
   // Invitar a un grupo
   router.post("/:groupId/invite", verifyToken, inviteToGroup);

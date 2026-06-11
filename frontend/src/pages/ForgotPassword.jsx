@@ -38,6 +38,9 @@ const ForgotPassword = () => {
             <p className="text-gray-500 text-sm">
               Si el email está registrado, recibirás un link para restablecer tu contraseña en los próximos minutos.
             </p>
+            <p className="text-gray-400 text-xs">
+              ¿No te llegó? Revisá la carpeta de spam. Si después de unos minutos no aparece, pedile a un admin de tu grupo que te genere un link manualmente.
+            </p>
             <Link to="/login" className="inline-block text-green-600 hover:underline text-sm font-medium">
               ← Volver al login
             </Link>

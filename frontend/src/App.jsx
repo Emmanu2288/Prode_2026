@@ -10,6 +10,7 @@ import Register from "./pages/Register";
 import AuthCallback from "./pages/AuthCallback";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import Rules from "./pages/Rules";
 import Dashboard from "./pages/Dashboard";
 import Fixtures from "./pages/Fixtures";
 import FixtureDetail from "./pages/FixtureDetail";
@@ -42,6 +43,7 @@ const App = () => {
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/rules" element={<Rules />} />
 
         {/* Rutas protegidas — requieren login */}
         <Route element={<ProtectedRoute />}>

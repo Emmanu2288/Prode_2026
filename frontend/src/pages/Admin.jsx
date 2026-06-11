@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   getAdminUsers, getAdminGroups, getTournamentData,
   processTournamentAwards, getFinishedMatches, setManualMvp,
+  generateResetLink,
 } from "../services/admin.service";
 import { getFixturePlayers } from "../services/match.service";
 
@@ -16,16 +17,63 @@ const TABS = [
 const UsersTab = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [generatingId, setGeneratingId] = useState(null);
+  const [resetLinkInfo, setResetLinkInfo] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     getAdminUsers().then((r) => setUsers(r.data)).finally(() => setLoading(false));
   }, []);
+
+  const handleResetLink = async (u) => {
+    setGeneratingId(u._id);
+    try {
+      const r = await generateResetLink(u._id);
+      setResetLinkInfo({ name: `${u.first_name} ${u.last_name}`, url: r.data.resetUrl });
+      setCopied(false);
+    } catch (err) {
+      alert(err.response?.data?.message || "Error al generar el link");
+    } finally {
+      setGeneratingId(null);
+    }
+  };
+
+  const copyResetLink = () => {
+    navigator.clipboard.writeText(resetLinkInfo.url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   if (loading) return <div className="text-center py-10 text-gray-400">Cargando...</div>;
 
   return (
     <div className="space-y-2">
       <p className="text-xs text-gray-400 mb-3">{users.length} usuarios registrados</p>
+
+      {resetLinkInfo && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 space-y-2 mb-3">
+          <p className="text-sm text-yellow-800">
+            🔑 Link de reseteo para <b>{resetLinkInfo.name}</b> (válido 1 hora):
+          </p>
+          <div className="flex gap-2 items-center">
+            <input
+              readOnly
+              value={resetLinkInfo.url}
+              className="flex-1 text-xs bg-white border border-yellow-300 rounded-lg px-3 py-2 text-gray-600"
+            />
+            <button
+              onClick={copyResetLink}
+              className="bg-yellow-500 text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-yellow-600 transition-colors"
+            >
+              {copied ? "✓ Copiado" : "Copiar"}
+            </button>
+          </div>
+          <button onClick={() => setResetLinkInfo(null)} className="text-xs text-gray-400 hover:text-gray-600">
+            Cerrar
+          </button>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -35,7 +83,8 @@ const UsersTab = () => {
               <th className="text-left px-4 py-2">Email</th>
               <th className="text-left px-4 py-2">Rol</th>
               <th className="text-right px-4 py-2">Pronósticos</th>
-              <th className="text-right px-4 py-2 rounded-r-lg">Puntos</th>
+              <th className="text-right px-4 py-2">Puntos</th>
+              <th className="text-center px-4 py-2 rounded-r-lg">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -53,6 +102,19 @@ const UsersTab = () => {
                 </td>
                 <td className="px-4 py-3 text-right text-gray-600">{u.predictionCount ?? 0}</td>
                 <td className="px-4 py-3 text-right font-bold text-green-600">{u.totalPoints ?? 0}</td>
+                <td className="px-4 py-3 text-center">
+                  {u.googleId ? (
+                    <span className="text-xs text-gray-300">—</span>
+                  ) : (
+                    <button
+                      onClick={() => handleResetLink(u)}
+                      disabled={generatingId === u._id}
+                      className="text-xs font-semibold text-yellow-700 bg-yellow-50 hover:bg-yellow-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {generatingId === u._id ? "..." : "🔑 Reset"}
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

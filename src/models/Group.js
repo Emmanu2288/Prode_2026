@@ -8,7 +8,8 @@ const groupSchema = new Schema({
   description: { type: String, trim: true },
   isPublic: { type: Boolean, default: false },
   inviteOnly: { type: Boolean, default: true },
-  paymentType: { type: String, enum: ["single", "multi"], default: "single" } // single=pago único, multi=por fase
+  paymentType: { type: String, enum: ["single", "multi"], default: "single" }, // single=pago único, multi=por fase
+  paymentAmount: { type: Number, default: 10000 } // monto por pago (pago único o por fase)
 }, { timestamps: true });
 
 export default mongoose.model("Group", groupSchema);

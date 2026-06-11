@@ -149,6 +149,21 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Botón Reglas / Cómo se juega */}
+      <button
+        onClick={() => navigate("/rules")}
+        className="w-full bg-card border border-gray-100 rounded-xl px-4 py-3 flex items-center justify-between hover:border-green-200 hover:shadow-md transition-all"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">📋</span>
+          <div className="text-left">
+            <p className="text-sm font-semibold text-gray-800">¿Cómo se juega?</p>
+            <p className="text-xs text-gray-400">Reglas, puntos y premios</p>
+          </div>
+        </div>
+        <span className="text-green-600 text-sm font-medium">Ver reglas →</span>
+      </button>
+
       {/* Banner invitaciones pendientes */}
       {pendingInvitations.length > 0 && (
         <div className="space-y-2">

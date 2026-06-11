@@ -1,6 +1,7 @@
 import Group from "../models/Group.js";
 import Membership from "../models/Membership.js";
 import Prediction from "../models/Prediction.js";
+import Payment from "../models/Payment.js";
 import { inviteToGroup as inviteToGroupController } from "./invitation.controller.js";
 
 // Eliminar grupo (solo owner)
@@ -75,12 +76,41 @@ export const getMyGroups = async (req, res) => {
 // Detalle de un grupo
 export const getGroupById = async (req, res) => {
   try {
-    const group = await Group.findById(req.params.groupId).populate("owner", "first_name last_name email");
+    const group = await Group.findById(req.params.groupId).populate("owner", "first_name last_name email").lean();
     if (!group) return res.status(404).json({ message: "Grupo no encontrado" });
-    return res.json(group);
+
+    // Pozo acumulado: cantidad de pagos confirmados x monto por pago
+    const paidCount = await Payment.countDocuments({ group: group._id, paid: true });
+    const poolTotal = paidCount * (group.paymentAmount || 0);
+
+    return res.json({ ...group, paidCount, poolTotal });
   } catch (err) {
     console.error("getGroupById error:", err);
     return res.status(500).json({ message: "Error al obtener el grupo" });
+  }
+};
+
+// Actualizar configuración del grupo (solo admin) — por ahora, monto por pago
+export const updateGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { paymentAmount } = req.body;
+
+    const update = {};
+    if (paymentAmount !== undefined) {
+      const amount = Number(paymentAmount);
+      if (isNaN(amount) || amount < 0) {
+        return res.status(400).json({ message: "Monto inválido" });
+      }
+      update.paymentAmount = amount;
+    }
+
+    const group = await Group.findByIdAndUpdate(groupId, update, { new: true });
+    if (!group) return res.status(404).json({ message: "Grupo no encontrado" });
+    return res.json(group);
+  } catch (err) {
+    console.error("updateGroup error:", err);
+    return res.status(500).json({ message: "Error al actualizar el grupo" });
   }
 };
 

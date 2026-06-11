@@ -9,9 +9,12 @@ import {
   togglePayment,
   deleteGroup,
   inviteToGroup,
+  updateGroup,
 } from "../services/group.service";
 import useMatches from "../hooks/useMatches";
 import useAuthStore from "../store/authStore";
+
+const formatMoney = (n) => `$${Number(n || 0).toLocaleString("es-AR")}`;
 
 const GroupDetail = () => {
   const { groupId } = useParams();
@@ -26,6 +29,8 @@ const GroupDetail = () => {
   const [tab, setTab] = useState("ranking");
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [payments, setPayments] = useState([]);
+  const [amountDraft, setAmountDraft] = useState(null);
+  const [savingAmount, setSavingAmount] = useState(false);
 
   // Invitar — búsqueda de usuarios registrados
   const [searchQuery, setSearchQuery] = useState("");
@@ -167,6 +172,11 @@ const GroupDetail = () => {
               <h1 className="text-2xl font-bold text-white">{group.name}</h1>
               {group.description && <p className="text-green-300 text-sm mt-1">{group.description}</p>}
               <p className="text-green-400 text-xs mt-1">{members.length} miembro{members.length !== 1 ? "s" : ""}</p>
+              {group.paymentAmount > 0 && (
+                <div className="mt-2 inline-flex items-center gap-1.5 bg-yellow-400 text-yellow-900 rounded-full px-3 py-1 text-xs font-bold">
+                  🏆 Pozo acumulado: {formatMoney(group.poolTotal)}
+                </div>
+              )}
             </div>
             {isOwner && (
               <div className="flex items-center gap-2">
@@ -331,14 +341,65 @@ const GroupDetail = () => {
           getGroupPayments(groupId).then(r => setPayments(r.data)).catch(() => {});
         }
 
+        const totalPaidCount = payments.reduce(
+          (sum, m) => sum + phases.filter(p => m.payments[p]?.paid).length,
+          0
+        );
+        const amount = amountDraft ?? group?.paymentAmount ?? 10000;
+
         const handleToggle = async (userId, phase, current) => {
           await togglePayment(groupId, userId, phase, { paid: !current });
           const r = await getGroupPayments(groupId);
           setPayments(r.data);
+          setGroup(prev => {
+            const newPaidCount = (prev.paidCount || 0) + (current ? -1 : 1);
+            return { ...prev, paidCount: newPaidCount, poolTotal: newPaidCount * (prev.paymentAmount || 0) };
+          });
+        };
+
+        const handleSaveAmount = async () => {
+          setSavingAmount(true);
+          try {
+            const amt = Number(amount);
+            await updateGroup(groupId, { paymentAmount: amt });
+            setGroup(prev => ({ ...prev, paymentAmount: amt, poolTotal: (prev.paidCount || 0) * amt }));
+            setAmountDraft(null);
+          } catch (err) {
+            console.error("Error guardando monto:", err);
+          } finally {
+            setSavingAmount(false);
+          }
         };
 
         return (
           <div className="space-y-4">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-sm text-yellow-800">
+                  <span className="font-bold">{totalPaidCount}</span> pago{totalPaidCount !== 1 ? "s" : ""} confirmado{totalPaidCount !== 1 ? "s" : ""} × {formatMoney(amount)}
+                </p>
+                <p className="text-lg font-bold text-yellow-900">🏆 Pozo: {formatMoney(totalPaidCount * amount)}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-yellow-700">Monto por pago</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={amount}
+                  onChange={(e) => setAmountDraft(e.target.value)}
+                  className="w-28 px-2 py-1 border border-yellow-300 rounded-lg text-sm text-right bg-white"
+                />
+                {amountDraft !== null && (
+                  <button
+                    onClick={handleSaveAmount}
+                    disabled={savingAmount}
+                    className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold rounded-lg disabled:opacity-50"
+                  >
+                    {savingAmount ? "..." : "Guardar"}
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

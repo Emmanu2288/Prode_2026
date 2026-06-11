@@ -3,6 +3,7 @@ import api from "./api";
 export const getMyGroups       = ()              => api.get("/groups/my");
 export const getGroupById      = (id)            => api.get(`/groups/${id}`);
 export const createGroup       = (data)          => api.post("/groups", data);
+export const updateGroup       = (id, data)      => api.patch(`/groups/${id}`, data);
 export const getGroupMembers   = (id)            => api.get(`/groups/${id}/members`);
 export const getGroupLeaderboard = (id)          => api.get(`/groups/${id}/leaderboard`);
 export const inviteToGroup     = (id, data)      => api.post(`/groups/${id}/invite`, data);
