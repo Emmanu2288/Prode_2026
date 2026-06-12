@@ -103,6 +103,35 @@ html.dark .text-purple-700,
 html.dark .text-purple-500 { color: #c084fc !important; }
 html.dark .text-blue-700   { color: #60a5fa !important; }
 
+/* bg-white: fondo de la mayoría de las cards (la causa del texto invisible) */
+html.dark .bg-white { background: var(--bg-card) !important; }
+
+/* Backgrounds pastel adicionales, mismo criterio que las -50 de arriba */
+html.dark .bg-red-50     { background: #2d1414 !important; }
+html.dark .bg-red-100    { background: #3a1a1a !important; }
+html.dark .bg-green-100  { background: #123d24 !important; }
+html.dark .bg-yellow-100 { background: #3d2e00 !important; }
+html.dark .bg-gray-200   { background: #2d3f50 !important; }
+html.dark .bg-gray-300   { background: #3d4f60 !important; }
+
+/* Bordes que acompañan a esos fondos pastel */
+html.dark .border-red-200    { border-color: #7c2020 !important; }
+html.dark .border-yellow-200 { border-color: #7a5f00 !important; }
+html.dark .border-gray-50    { border-color: #243447 !important; }
+html.dark .divide-gray-50 > :not([hidden]) ~ :not([hidden]) { border-color: #243447 !important; }
+
+/* Textos oscuros (pensados para fondos claros) -> versión clara para fondo oscuro */
+html.dark .text-yellow-600,
+html.dark .text-yellow-700,
+html.dark .text-yellow-800 { color: #fbbf24 !important; }
+
+html.dark .text-red-600,
+html.dark .text-red-700 { color: #f87171 !important; }
+
+/* Variantes con opacidad */
+html.dark .bg-green-50\/60 { background: rgba(13, 43, 26, 0.6) !important; }
+html.dark .bg-green-50\/50 { background: rgba(13, 43, 26, 0.5) !important; }
+
 html.dark input,
 html.dark textarea,
 html.dark select {
