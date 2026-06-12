@@ -14,6 +14,7 @@ import Rules from "./pages/Rules";
 import Dashboard from "./pages/Dashboard";
 import Fixtures from "./pages/Fixtures";
 import FixtureDetail from "./pages/FixtureDetail";
+import Standings from "./pages/Standings";
 import NotFound from "./pages/NotFound";
 
 import Predictions from "./pages/Predictions";
@@ -51,6 +52,7 @@ const App = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/fixtures" element={<Fixtures />} />
             <Route path="/fixtures/:id" element={<FixtureDetail />} />
+            <Route path="/standings" element={<Standings />} />
             <Route path="/groups" element={<Groups />} />
             <Route path="/groups/:groupId" element={<GroupDetail />} />
             <Route path="/predictions" element={<Predictions />} />

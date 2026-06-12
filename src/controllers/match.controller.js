@@ -1,14 +1,51 @@
 import axios from "axios";
-import { getWorldCup2026Matches } from "../services/match.service.js";
+import { getWorldCup2026Matches, getWorldCupStandings, getFixtureMvp } from "../services/match.service.js";
+import ProcessedFixture from "../models/ProcessedFixture.js";
 
 const API_URL = "https://v3.football.api-sports.io";
 const API_KEY = process.env.FOOTBALL_API_KEY;
+const SEASON = process.env.API_SEASON || 2026;
+
+const FINISHED_STATUSES = new Set(["FT", "AET", "PEN"]);
 
 // Controlador para obtener partidos desde la API externa
 export const getMatches = async (req, res) => {
   try {
     const { leagueId, season } = req.query;
     const matches = await getWorldCup2026Matches({ leagueId, season });
+
+    // Adjuntar la figura (MVP real) a los partidos finalizados, visible para todos
+    const finishedIds = matches
+      .filter((m) => FINISHED_STATUSES.has(m.fixture.status.short))
+      .map((m) => String(m.fixture.id));
+
+    if (finishedIds.length) {
+      const scoredDocs = await ProcessedFixture.find({
+        matchId: { $in: finishedIds },
+        type: "scored",
+      }).lean();
+
+      const mvpByMatch = {};
+      for (const doc of scoredDocs) {
+        if (doc.mvp) {
+          mvpByMatch[doc.matchId] = doc.mvp;
+        } else {
+          // Partido ya procesado pero sin figura calculada todavía
+          // (las calificaciones de api-football tardan unos minutos en publicarse)
+          const mvp = await getFixtureMvp(doc.matchId);
+          if (mvp) {
+            mvpByMatch[doc.matchId] = mvp;
+            await ProcessedFixture.updateOne({ _id: doc._id }, { $set: { mvp } });
+          }
+        }
+      }
+
+      for (const m of matches) {
+        const mvp = mvpByMatch[String(m.fixture.id)];
+        if (mvp) m.mvp = mvp;
+      }
+    }
+
     return res.json(matches);
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -159,5 +196,47 @@ export const getHeadToHead = async (req, res) => {
   } catch (err) {
     console.error("getHeadToHead error:", err.message);
     return res.status(500).json({ error: "Error al obtener historial entre equipos" });
+  }
+};
+
+// Cache en memoria: la tabla y los goleadores solo cambian cuando termina un partido
+let standingsCache = { data: null, ts: 0 };
+const STANDINGS_CACHE_TTL = 5 * 60_000;
+
+/**
+ * Devuelve la tabla de posiciones por grupo + el top 5 de goleadores.
+ */
+export const getStandings = async (req, res) => {
+  try {
+    if (standingsCache.data && Date.now() - standingsCache.ts < STANDINGS_CACHE_TTL) {
+      return res.json(standingsCache.data);
+    }
+
+    const [standings, scorersRes] = await Promise.all([
+      getWorldCupStandings(),
+      axios.get(`${API_URL}/players/topscorers`, {
+        params: { league: 1, season: SEASON },
+        headers: { "x-apisports-key": API_KEY },
+        timeout: 8000,
+      }).catch((err) => {
+        console.warn("getStandings: topscorers fetch error:", err.message);
+        return { data: { response: [] } };
+      }),
+    ]);
+
+    const topScorers = (scorersRes.data?.response || []).slice(0, 5).map((entry) => ({
+      name: entry.player?.name,
+      photo: entry.player?.photo,
+      team: entry.statistics?.[0]?.team?.name,
+      teamLogo: entry.statistics?.[0]?.team?.logo,
+      goals: entry.statistics?.[0]?.goals?.total ?? 0,
+      assists: entry.statistics?.[0]?.goals?.assists ?? 0,
+    }));
+
+    const data = { standings, topScorers };
+    standingsCache = { data, ts: Date.now() };
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
 };

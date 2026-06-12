@@ -122,6 +122,15 @@ const MatchCard = ({ match }) => {
         </p>
       )}
 
+      {/* MVP del partido (real, visible para todos) */}
+      {isFinished && match.mvp && (
+        <div className="text-center mt-2">
+          <span className="inline-flex items-center gap-1 bg-yellow-50 text-yellow-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+            ⭐ MVP: {match.mvp}
+          </span>
+        </div>
+      )}
+
       {/* Botones */}
       <div className="flex gap-2 mt-3">
         {isNotStarted && (

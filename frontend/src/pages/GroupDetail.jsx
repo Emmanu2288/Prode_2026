@@ -303,6 +303,11 @@ const GroupDetail = () => {
                           {m.league.round.replace("Group Stage - ", "Fecha ")} ·{" "}
                           {isFinished ? `${m.goals.home}–${m.goals.away} FT` : "Por jugar"}
                         </p>
+                        {isFinished && m.mvp && (
+                          <p className="text-xs text-yellow-600 font-medium truncate">
+                            ⭐ MVP: {m.mvp}
+                          </p>
+                        )}
                       </div>
                       <img src={m.teams.away.logo} alt="" className="w-7 h-7 object-contain" />
                     </div>

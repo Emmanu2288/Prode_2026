@@ -9,6 +9,7 @@ import { acceptInvitation, rejectInvitation } from "../../services/group.service
 const NAV_LINKS = [
   { to: "/dashboard",   label: "Inicio" },
   { to: "/fixtures",    label: "Partidos" },
+  { to: "/standings",   label: "Tabla" },
   { to: "/groups",      label: "Grupos" },
   { to: "/predictions", label: "Pronósticos" },
   { to: "/extras",      label: "Extras" },

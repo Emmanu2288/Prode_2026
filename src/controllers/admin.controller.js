@@ -279,7 +279,7 @@ export const setManualMvp = async (req, res) => {
     // Marcar como procesado manualmente
     await ProcessedFixture.findOneAndUpdate(
       { matchId: String(fixtureId), type: "scored" },
-      { matchId: String(fixtureId), type: "scored", manualMvp: mvpName },
+      { matchId: String(fixtureId), type: "scored", mvp: mvpName },
       { upsert: true }
     );
 

@@ -23,3 +23,56 @@ export const getWorldCup2026Matches = async (opts = {}) => {
     throw new Error("Error al consultar la API de fútbol: " + err.message);
   }
 };
+
+/**
+ * Devuelve la tabla de posiciones por grupo (fase de grupos).
+ * Cada elemento de `standings` es un array con los equipos de un grupo.
+ */
+export const getWorldCupStandings = async (opts = {}) => {
+  if (!API_KEY) throw new Error("FOOTBALL_API_KEY no configurada");
+  const { leagueId = WORLD_CUP_LEAGUE_ID, season = WORLD_CUP_SEASON } = opts;
+
+  try {
+    const response = await axios.get(`${API_URL}/standings`, {
+      params: { league: leagueId, season },
+      headers: { "x-apisports-key": API_KEY }
+    });
+    return response.data?.response?.[0]?.league?.standings || [];
+  } catch (err) {
+    console.error("getWorldCupStandings error:", err.message);
+    throw new Error("Error al consultar la tabla de posiciones: " + err.message);
+  }
+};
+
+/**
+ * Devuelve el nombre del jugador con mayor rating de un fixture finalizado (figura del partido).
+ * null si todavía no hay calificaciones disponibles.
+ */
+export const getFixtureMvp = async (matchId) => {
+  if (!API_KEY) return null;
+  try {
+    const res = await axios.get(`${API_URL}/fixtures`, {
+      params: { id: matchId },
+      headers: { "x-apisports-key": API_KEY },
+      timeout: 8000,
+    });
+    const fixture = res.data?.response?.[0];
+    if (!fixture?.players) return null;
+
+    let topPlayer = null;
+    let topRating = 0;
+    for (const team of fixture.players) {
+      for (const entry of team.players) {
+        const rating = parseFloat(entry?.statistics?.[0]?.games?.rating ?? 0);
+        if (rating > topRating) {
+          topRating = rating;
+          topPlayer = entry?.player?.name ?? null;
+        }
+      }
+    }
+    return topPlayer;
+  } catch (err) {
+    console.warn("getFixtureMvp error:", err.message);
+    return null;
+  }
+};
