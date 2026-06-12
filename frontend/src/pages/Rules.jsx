@@ -49,6 +49,7 @@ const Rules = () => {
           <ul className="space-y-2 text-sm text-gray-600 list-disc list-inside">
             <li>Los pronósticos se cargan <b>antes de que arranque cada partido</b>. Una vez que empieza, se cierra automáticamente.</li>
             <li>Si no llegaste a cargar tu pronóstico, ese partido queda como <b>0-0</b> por defecto.</li>
+            <li>💡 <b>Tip:</b> cargá tu pronóstico cerca de <b>1 hora antes</b> del partido. Para ese momento ya suelen confirmarse los <b>titulares</b> de cada equipo, que vas a ver destacados al elegir la figura (MVP).</li>
           </ul>
         </div>
 

@@ -276,6 +276,17 @@ const NewPrediction = () => {
                 </div>
               ) : players ? (
                 <div className="space-y-2">
+                  {/* Estado de la alineación */}
+                  {players.source === "lineup" ? (
+                    <p className="text-xs text-green-600">
+                      ✅ Alineaciones confirmadas — los titulares aparecen destacados
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-400">
+                      ⏳ Alineaciones todavía no confirmadas (se conocen ~1h antes del partido)
+                    </p>
+                  )}
+
                   {/* Jugador seleccionado */}
                   {mvpPlayer && (
                     <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
@@ -327,9 +338,9 @@ const NewPrediction = () => {
                       M: "Mediocampista", Midfielder: "Mediocampista",
                       F: "Delantero", A: "Delantero", Attacker: "Delantero", Forward: "Delantero",
                     };
-                    const filtered = mvpSearch
+                    const filtered = [...(mvpSearch
                       ? list.filter((p) => p.name?.toLowerCase().includes(mvpSearch.toLowerCase()))
-                      : list;
+                      : list)].sort((a, b) => (b.starter === true) - (a.starter === true));
                     return (
                       <div className="border border-gray-200 rounded-xl overflow-hidden">
                         <div className="p-2 border-b border-gray-100 bg-gray-50">
@@ -348,14 +359,23 @@ const NewPrediction = () => {
                               key={p.id || p.name}
                               type="button"
                               onClick={() => { setMvpPlayer(p.name); setMvpTeam(null); }}
-                              className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-green-50 transition-colors text-left"
+                              className={`w-full flex items-center justify-between px-4 py-2.5 text-sm transition-colors text-left ${
+                                p.starter ? "bg-green-50 hover:bg-green-100" : "hover:bg-green-50"
+                              }`}
                             >
                               <span className="text-gray-800">{p.name}</span>
-                              {p.pos && (
-                                <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
-                                  {POS_ES[p.pos] || p.pos}
-                                </span>
-                              )}
+                              <span className="flex items-center gap-2 ml-2 flex-shrink-0">
+                                {p.starter && (
+                                  <span className="text-[10px] font-semibold text-green-700 bg-green-100 px-1.5 py-0.5 rounded">
+                                    Titular
+                                  </span>
+                                )}
+                                {p.pos && (
+                                  <span className="text-xs text-gray-400">
+                                    {POS_ES[p.pos] || p.pos}
+                                  </span>
+                                )}
+                              </span>
                             </button>
                           ))}
                           {filtered.length === 0 && (
