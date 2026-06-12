@@ -11,25 +11,22 @@ const Groups = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ name: "", description: "", paymentType: "single" });
   const [creating, setCreating] = useState(false);
+  const [refreshIndex, setRefreshIndex] = useState(0);
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 
-  const load = async () => {
-    try {
-      const [groupsRes, invRes] = await Promise.all([
-        getMyGroups(),
-        getPendingInvitations(),
-      ]);
-      setGroups(groupsRes.data);
-      setInvitations(invRes.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([getMyGroups(), getPendingInvitations()])
+      .then(([groupsRes, invRes]) => {
+        if (cancelled) return;
+        setGroups(groupsRes.data);
+        setInvitations(invRes.data);
+      })
+      .catch((err) => { if (!cancelled) console.error(err); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [refreshIndex]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -51,7 +48,7 @@ const Groups = () => {
   const handleAccept = async (token) => {
     try {
       await acceptInvitation(token);
-      await load();
+      setRefreshIndex((i) => i + 1);
     } catch (err) { console.error(err); }
   };
 

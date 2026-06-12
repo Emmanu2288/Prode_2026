@@ -7,12 +7,14 @@ import useSocket from "./useSocket";
  */
 const useLiveMatches = (initialMatches) => {
   const [matches, setMatches] = useState(initialMatches);
+  const [prevInitialMatches, setPrevInitialMatches] = useState(initialMatches);
   const socket = useSocket();
 
   // Sincronizar cuando cambia la fuente
-  useEffect(() => {
+  if (initialMatches !== prevInitialMatches) {
+    setPrevInitialMatches(initialMatches);
     setMatches(initialMatches);
-  }, [initialMatches]);
+  }
 
   useEffect(() => {
     if (!socket) return;
@@ -33,7 +35,7 @@ const useLiveMatches = (initialMatches) => {
     };
 
     // Evento en vivo (gol, tarjeta) → actualizar elapsed y marcador si hay goles
-    const onEvent = ({ matchId, event, fixture }) => {
+    const onEvent = ({ matchId, fixture }) => {
       setMatches((prev) =>
         prev.map((m) => {
           if (String(m.fixture.id) !== String(matchId)) return m;

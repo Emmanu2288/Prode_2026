@@ -1,11 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 import api from "../services/api";
 
 const Profile = () => {
   const { user, loadUser } = useAuthStore();
-  const navigate = useNavigate();
 
   const [form, setForm] = useState({
     first_name: user?.first_name || "",

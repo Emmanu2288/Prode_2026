@@ -36,7 +36,7 @@ const getCountdown = (dateStr) => {
 
 const MatchCard = ({ match }) => {
   const navigate = useNavigate();
-  const { fixture, teams, goals, league } = match;
+  const { fixture, teams, goals } = match;
   const status = fixture.status.short;
   const isLive = LIVE_STATUSES.includes(status);
   const isFinished = ["FT", "AET", "PEN"].includes(status);

@@ -39,7 +39,6 @@ const GroupDetail = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
   const [inviting, setInviting] = useState(false);
   const [addingDirectId, setAddingDirectId] = useState(null);
   const [inviteMsg, setInviteMsg] = useState(null);
@@ -75,7 +74,7 @@ const GroupDetail = () => {
 
   // Buscar usuarios con debounce
   useEffect(() => {
-    if (searchQuery.trim().length < 2) { setSearchResults([]); return; }
+    if (searchQuery.trim().length < 2) return;
     const timer = setTimeout(async () => {
       setSearching(true);
       try {
@@ -98,8 +97,7 @@ const GroupDetail = () => {
       setInviteMsg({ type: "ok", text: "✅ Invitación enviada. El usuario la verá cuando ingrese a la app." });
       setSearchQuery("");
       setSearchResults([]);
-      setSelectedUser(null);
-    } catch (err) {
+    } catch {
       setInviteMsg({ type: "error", text: "Error al enviar la invitación." });
     } finally {
       setInviting(false);
@@ -145,6 +143,9 @@ const GroupDetail = () => {
                   group?.owner?._id === user?.id  ||
                   group?.owner === user?._id      ||
                   group?.owner === user?.id;
+
+  // Resultados visibles: se limpian si la búsqueda queda muy corta, sin necesidad de tocar el estado
+  const visibleResults = searchQuery.trim().length < 2 ? [] : searchResults;
 
   const handleDelete = async () => {
     if (!window.confirm(`¿Eliminar el grupo "${group.name}"? Esta acción no se puede deshacer.`)) return;
@@ -549,13 +550,13 @@ const GroupDetail = () => {
               <p className="text-xs text-gray-400 mt-2">Buscando...</p>
             )}
 
-            {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
+            {!searching && searchQuery.length >= 2 && visibleResults.length === 0 && (
               <p className="text-xs text-gray-400 mt-2">No se encontraron usuarios.</p>
             )}
 
-            {searchResults.length > 0 && (
+            {visibleResults.length > 0 && (
               <div className="mt-2 border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
-                {searchResults.map((u) => (
+                {visibleResults.map((u) => (
                   <div key={u._id} className="flex items-center justify-between px-3 py-2.5 hover:bg-gray-50">
                     <div>
                       <p className="text-sm font-medium text-gray-800">{u.first_name} {u.last_name}</p>

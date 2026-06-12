@@ -2,14 +2,11 @@ import { useEffect, useState } from "react";
 
 const useInstallPrompt = () => {
   const [prompt, setPrompt] = useState(null);
-  const [installed, setInstalled] = useState(false);
+  const [installed, setInstalled] = useState(() => window.matchMedia("(display-mode: standalone)").matches);
 
   useEffect(() => {
-    // Detectar si ya está instalada
-    if (window.matchMedia("(display-mode: standalone)").matches) {
-      setInstalled(true);
-      return;
-    }
+    // Si ya está instalada, no hace falta escuchar el prompt de instalación
+    if (window.matchMedia("(display-mode: standalone)").matches) return;
 
     const handler = (e) => {
       e.preventDefault();

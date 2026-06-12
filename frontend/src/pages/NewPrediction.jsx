@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { createPrediction, updatePrediction, getMyPredictions } from "../services/prediction.service";
+import { createPrediction, getMyPredictions } from "../services/prediction.service";
 import { getFixturePlayers, getHeadToHead } from "../services/match.service";
 import BallIcon from "../components/BallIcon";
 
@@ -32,9 +32,9 @@ const NewPrediction = () => {
   const [awayGoals, setAwayGoals] = useState(0);
   const [mvpPlayer, setMvpPlayer] = useState("");
   const [players, setPlayers] = useState(null);
-  const [loadingPlayers, setLoadingPlayers] = useState(false);
+  const [loadingPlayers, setLoadingPlayers] = useState(true);
   const [h2h, setH2h] = useState([]);
-  const [loadingH2h, setLoadingH2h] = useState(false);
+  const [loadingH2h, setLoadingH2h] = useState(true);
   const [mvpTeam, setMvpTeam] = useState(null); // "home" | "away" | null
   const [mvpSearch, setMvpSearch] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,7 +56,7 @@ const NewPrediction = () => {
 
   // Al cargar, verificar si ya hay un pronóstico para este partido
   useEffect(() => {
-    if (!fixtureId) { setCheckingExisting(false); return; }
+    if (!fixtureId) return;
     getMyPredictions()
       .then((res) => {
         const found = res.data.find((p) =>
@@ -74,6 +74,24 @@ const NewPrediction = () => {
       .catch(() => {})
       .finally(() => setCheckingExisting(false));
   }, [fixtureId]);
+
+  // Cargar jugadores de ambos equipos
+  useEffect(() => {
+    if (!match) return;
+    getFixturePlayers(fixture.id)
+      .then((res) => setPlayers(res.data))
+      .catch(() => setPlayers(null))
+      .finally(() => setLoadingPlayers(false));
+  }, [match, fixture?.id]);
+
+  // Cargar historial de enfrentamientos directos entre ambos equipos
+  useEffect(() => {
+    if (!match) return;
+    getHeadToHead(teams.home.id, teams.away.id)
+      .then((res) => setH2h(res.data || []))
+      .catch(() => setH2h([]))
+      .finally(() => setLoadingH2h(false));
+  }, [match, teams?.home?.id, teams?.away?.id]);
 
   if (!match) {
     return (
@@ -106,26 +124,6 @@ const NewPrediction = () => {
       setLoading(false);
     }
   };
-
-  // Cargar jugadores de ambos equipos
-  useEffect(() => {
-    if (!match) return;
-    setLoadingPlayers(true);
-    getFixturePlayers(fixture.id)
-      .then((res) => setPlayers(res.data))
-      .catch(() => setPlayers(null))
-      .finally(() => setLoadingPlayers(false));
-  }, []);
-
-  // Cargar historial de enfrentamientos directos entre ambos equipos
-  useEffect(() => {
-    if (!match) return;
-    setLoadingH2h(true);
-    getHeadToHead(teams.home.id, teams.away.id)
-      .then((res) => setH2h(res.data || []))
-      .catch(() => setH2h([]))
-      .finally(() => setLoadingH2h(false));
-  }, []);
 
   if (checkingExisting) {
     return (

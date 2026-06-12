@@ -26,7 +26,7 @@ const AuthCallback = () => {
     } else {
       navigate("/login?error=google", { replace: true });
     }
-  }, []);
+  }, [searchParams, navigate, loadUser]);
 
   return (
     <div className="min-h-screen bg-green-700 flex items-center justify-center">

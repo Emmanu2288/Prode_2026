@@ -30,10 +30,10 @@ const NotificationBell = () => {
   }, []);
 
   const handleAccept = async (notif) => {
-    try { await acceptInvitation(notif.token); removeNotification(notif.id); } catch {}
+    try { await acceptInvitation(notif.token); removeNotification(notif.id); } catch (err) { console.error(err); }
   };
   const handleReject = async (notif) => {
-    try { await rejectInvitation(notif.token); removeNotification(notif.id); } catch {}
+    try { await rejectInvitation(notif.token); removeNotification(notif.id); } catch (err) { console.error(err); }
   };
   const handleAnnouncementClick = (notif) => {
     if (notif.type !== "announcement" || !notif.url) return;
@@ -131,6 +131,7 @@ const Navbar = () => {
   const { canInstall, installed, install } = useInstallPrompt();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
+  const [prevPathname, setPrevPathname] = useState(location.pathname);
 
   const handleLogout = async () => {
     setMenuOpen(false);
@@ -145,7 +146,10 @@ const Navbar = () => {
   };
 
   // Cerrar menú al cambiar de ruta
-  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+  if (location.pathname !== prevPathname) {
+    setPrevPathname(location.pathname);
+    setMenuOpen(false);
+  }
 
   return (
     <>

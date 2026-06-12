@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { io } from "socket.io-client";
 import useAuthStore from "../store/authStore";
 import useNotificationStore from "../store/notificationStore";
@@ -8,7 +8,6 @@ let socketInstance = null;
 const useSocket = () => {
   const { user, token } = useAuthStore();
   const addNotification = useNotificationStore((s) => s.addNotification);
-  const socketRef = useRef(null);
 
   useEffect(() => {
     if (!token || !user) return;
@@ -21,7 +20,6 @@ const useSocket = () => {
       });
     }
 
-    socketRef.current = socketInstance;
     socketInstance.emit("join_user", { userId: user._id });
 
     // Escuchar invitaciones entrantes
@@ -54,9 +52,9 @@ const useSocket = () => {
       socketInstance?.off("invitation_received", onInvitation);
       socketInstance?.off("announcement", onAnnouncement);
     };
-  }, [token, user]);
+  }, [token, user, addNotification]);
 
-  return socketRef.current;
+  return socketInstance;
 };
 
 export const disconnectSocket = () => {

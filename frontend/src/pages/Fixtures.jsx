@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import useMatches from "../hooks/useMatches";
 import useLiveMatches from "../hooks/useLiveMatches";
 import MatchCard from "../components/fixtures/MatchCard";
@@ -17,13 +17,9 @@ const Fixtures = () => {
   const [selectedRound, setSelectedRound] = useState(null);
 
   // Selecciona automáticamente el round más próximo al cargar
-  useEffect(() => {
-    if (nextRound && !selectedRound) {
-      setSelectedRound(nextRound);
-    } else if (rounds.length > 0 && !selectedRound) {
-      setSelectedRound(rounds[0]);
-    }
-  }, [nextRound, rounds, selectedRound]);
+  if (!selectedRound && (nextRound || rounds.length > 0)) {
+    setSelectedRound(nextRound || rounds[0]);
+  }
 
   if (loading) {
     return (
