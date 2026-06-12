@@ -266,7 +266,7 @@ const GroupDetail = () => {
                     {entry.user?._id === user?._id && <span className="text-green-600 text-xs ml-1">(vos)</span>}
                   </p>
                 </div>
-                <span className="text-lg font-bold text-green-600">{entry.totalPoints ?? 0} pts</span>
+                <span className="text-lg font-bold text-green-600">{entry.points ?? 0} pts</span>
               </div>
             ))
           )}
@@ -315,14 +315,19 @@ const GroupDetail = () => {
                   {isSelected && (
                     <div className="border-t border-gray-100 divide-y divide-gray-50">
                       {preds.map((p, i) => (
-                        <div key={i} className="flex items-center justify-between" style={{ padding: "10px 20px" }}>
-                          <div className="flex items-center gap-2">
+                        <div key={i} className="flex items-center justify-between gap-2" style={{ padding: "10px 20px" }}>
+                          <div className="flex items-center gap-2 min-w-0">
                             <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-xs font-bold flex-shrink-0">
                               {p.userName?.[0]}
                             </div>
-                            <span className="text-sm text-gray-700">{p.userName}</span>
+                            <div className="min-w-0">
+                              <p className="text-sm text-gray-700 truncate">{p.userName}</p>
+                              {p.mvpPlayer && (
+                                <p className="text-xs text-gray-400 truncate sm:hidden">⭐ {p.mvpPlayer}</p>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-4 text-right">
+                          <div className="flex items-center gap-4 text-right flex-shrink-0">
                             {p.mvpPlayer && (
                               <span className="text-xs text-gray-400 hidden sm:block">⭐ {p.mvpPlayer}</span>
                             )}
