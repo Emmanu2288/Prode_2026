@@ -34,14 +34,32 @@ export const calculatePointsFinal = (prediction, finalGoals, finalMvp) => {
       if (predDiff === finalDiff) points += 1;
     }
 
-    // MVP — comparación tolerante (apellido, parcial, sin tildes)
+    // MVP — comparación tolerante (apellido, parcial, sin tildes, e inicial vs nombre completo)
     const predMvp = prediction.mvpPlayer ?? prediction.mvp ?? null;
     if (predMvp && finalMvp) {
       const normalize = (s) =>
-        String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+        String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\./g, "").trim();
       const p = normalize(predMvp);
       const a = normalize(finalMvp);
-      if (a.includes(p) || p.includes(a)) points += 2;
+
+      let mvpMatch = a.includes(p) || p.includes(a);
+
+      // Apellido igual + inicial de nombre compatible (ej: "I. Koné" vs "Ismael Koné")
+      if (!mvpMatch) {
+        const pWords = p.split(/\s+/);
+        const aWords = a.split(/\s+/);
+        const pLast = pWords[pWords.length - 1];
+        const aLast = aWords[aWords.length - 1];
+        const pFirst = pWords[0];
+        const aFirst = aWords[0];
+        const firstNameMatch =
+          pFirst === aFirst ||
+          (pFirst.length === 1 && aFirst[0] === pFirst) ||
+          (aFirst.length === 1 && pFirst[0] === aFirst);
+        mvpMatch = pLast === aLast && firstNameMatch;
+      }
+
+      if (mvpMatch) points += 2;
     }
 
     return points;
@@ -59,21 +77,29 @@ export const calculatePointsFinal = (prediction, finalGoals, finalMvp) => {
  */
 export const applyFinalPointsToPrediction = async (predictionDoc, points) => {
   try {
+    // Delta respecto del puntaje previamente aplicado (0 la primera vez que se procesa).
+    // Necesario para que una recalculación (ej: corrección manual de MVP) no vuelva
+    // a sumar el total completo sobre lo ya acumulado.
+    const oldPoints = predictionDoc.points ?? 0;
+    const delta = points - oldPoints;
+
     // Actualizar prediction
     await predictionDoc.constructor.findByIdAndUpdate(predictionDoc._id, { $set: { points } });
 
-    // Actualizar GroupPoints para cada membership del usuario
-    const memberships = await Membership.find({ user: predictionDoc.user }).lean();
-    for (const mem of memberships) {
-      await GroupPoints.findOneAndUpdate(
-        { group: mem.group, user: predictionDoc.user },
-        { $inc: { points }, $set: { lastUpdated: new Date() } },
-        { upsert: true }
-      );
-    }
+    if (delta !== 0) {
+      // Actualizar GroupPoints para cada membership del usuario
+      const memberships = await Membership.find({ user: predictionDoc.user }).lean();
+      for (const mem of memberships) {
+        await GroupPoints.findOneAndUpdate(
+          { group: mem.group, user: predictionDoc.user },
+          { $inc: { points: delta }, $set: { lastUpdated: new Date() } },
+          { upsert: true }
+        );
+      }
 
-    // Actualizar total global en User
-    await User.findByIdAndUpdate(predictionDoc.user, { $inc: { totalPoints: points } });
+      // Actualizar total global en User
+      await User.findByIdAndUpdate(predictionDoc.user, { $inc: { totalPoints: delta } });
+    }
   } catch (err) {
     console.error("applyFinalPointsToPrediction error:", err);
     throw err;
