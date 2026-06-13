@@ -1,6 +1,8 @@
 import axios from "axios";
 import { getWorldCup2026Matches, getWorldCupStandings, getFixtureMvp } from "../services/match.service.js";
 import ProcessedFixture from "../models/ProcessedFixture.js";
+import Prediction from "../models/Prediction.js";
+import { calculatePointsFinal, applyFinalPointsToPrediction } from "../services/points.service.js";
 
 const API_URL = "https://v3.football.api-sports.io";
 const API_KEY = process.env.FOOTBALL_API_KEY;
@@ -36,6 +38,17 @@ export const getMatches = async (req, res) => {
           if (mvp) {
             mvpByMatch[doc.matchId] = mvp;
             await ProcessedFixture.updateOne({ _id: doc._id }, { $set: { mvp } });
+
+            // La figura recién quedó disponible: al momento del scoring inicial
+            // finalMvp era null, así que nadie pudo cobrar el bonus de MVP.
+            // Recalcular puntos de las predicciones de este partido con la figura real.
+            const match = matches.find((m) => String(m.fixture.id) === doc.matchId);
+            const finalGoals = match?.goals ?? { home: 0, away: 0 };
+            const preds = await Prediction.find({ matchId: doc.matchId });
+            for (const pred of preds) {
+              const points = calculatePointsFinal(pred, finalGoals, mvp);
+              await applyFinalPointsToPrediction(pred, points);
+            }
           }
         }
       }
