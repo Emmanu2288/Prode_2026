@@ -20,8 +20,8 @@ const ExtrasReminder = () => {
     // Verificar si tiene extras incompletos
     getExtras().then((res) => {
       const e = res.data;
-      const filled = [e.worldChampion, e.bestPlayer, e.topScorer, e.bestGoalkeeper].filter(Boolean).length;
-      if (filled < 4) setShow(true);
+      const filled = [e.worldChampion, e.bestPlayer, e.topScorer, e.bestGoalkeeper, e.fairPlayTeam, e.bestYoungPlayer].filter(Boolean).length;
+      if (filled < 6) setShow(true);
     }).catch(() => {});
   }, []);
 

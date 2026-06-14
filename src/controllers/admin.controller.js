@@ -119,11 +119,11 @@ export const getTournamentData = async (req, res) => {
 /**
  * POST /api/admin/tournament-awards
  * Procesa los premios del torneo y asigna puntos a los usuarios que acertaron.
- * Body: { goldenBall: "Nombre", goldenGlove: "Nombre", triggerChampion: true, triggerTopScorer: true }
+ * Body: { goldenBall: "Nombre", goldenGlove: "Nombre", fairPlayTeam: "Selección", bestYoungPlayer: "Nombre", triggerChampion: true, triggerTopScorer: true }
  */
 export const processTournamentAwards = async (req, res) => {
   try {
-    const { goldenBall, goldenGlove, triggerChampion, triggerTopScorer } = req.body;
+    const { goldenBall, goldenGlove, fairPlayTeam, bestYoungPlayer, triggerChampion, triggerTopScorer } = req.body;
     const results = [];
 
     const normalize = (s) =>
@@ -198,6 +198,24 @@ export const processTournamentAwards = async (req, res) => {
         if (nc.includes(np) || np.includes(nc)) {
           await applyTournamentAwardPoints("best_goalkeeper", extra.user, 5);
           awarded.push("Golden Glove +5pts");
+        }
+      }
+
+      if (fairPlayTeam && extra.fairPlayTeam) {
+        const nc = normalize(fairPlayTeam);
+        const np = normalize(extra.fairPlayTeam);
+        if (nc.includes(np) || np.includes(nc)) {
+          await applyTournamentAwardPoints("fair_play", extra.user, 5);
+          awarded.push("Fair Play +5pts");
+        }
+      }
+
+      if (bestYoungPlayer && extra.bestYoungPlayer) {
+        const nc = normalize(bestYoungPlayer);
+        const np = normalize(extra.bestYoungPlayer);
+        if (nc.includes(np) || np.includes(nc)) {
+          await applyTournamentAwardPoints("best_young_player", extra.user, 5);
+          awarded.push("Mejor Jugador Joven +5pts");
         }
       }
 

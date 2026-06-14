@@ -188,7 +188,7 @@ const GroupsTab = () => {
 // ─── Tab Premios del torneo ───────────────────────────────────────────────────
 const AwardsTab = () => {
   const [data, setData] = useState(null);
-  const [form, setForm] = useState({ goldenBall: "", goldenGlove: "", triggerChampion: true, triggerTopScorer: true });
+  const [form, setForm] = useState({ goldenBall: "", goldenGlove: "", fairPlayTeam: "", bestYoungPlayer: "", triggerChampion: true, triggerTopScorer: true });
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -270,6 +270,26 @@ const AwardsTab = () => {
             value={form.goldenGlove}
             onChange={(e) => setForm({ ...form, goldenGlove: e.target.value })}
             placeholder="Ej: Emiliano Martínez"
+            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">🤝 Fair Play (Selección)</label>
+          <input
+            type="text"
+            value={form.fairPlayTeam}
+            onChange={(e) => setForm({ ...form, fairPlayTeam: e.target.value })}
+            placeholder="Ej: Argentina"
+            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">🌱 Golden Boy (Mejor Jugador Joven)</label>
+          <input
+            type="text"
+            value={form.bestYoungPlayer}
+            onChange={(e) => setForm({ ...form, bestYoungPlayer: e.target.value })}
+            placeholder="Ej: Lamine Yamal"
             className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
           />
         </div>

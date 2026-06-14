@@ -253,3 +253,92 @@ export const getStandings = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+
+// Cache en memoria: evita repetir las llamadas pesadas (topscorers + topassists + stats individuales)
+let goldenBoyCache = { data: null, ts: 0 };
+const GOLDEN_BOY_CACHE_TTL = 10 * 60_000;
+
+/**
+ * GET /api/matches/golden-boy-candidates
+ * Devuelve jugadores Sub-21 destacados (goleadores + asistencias) con datos
+ * adicionales (veces MVP, intercepciones, duelos ganados), para ayudar a los
+ * usuarios a elegir su pronóstico de "Mejor Jugador Joven" (Golden Boy) en Extras.
+ * Es solo informativo: no determina el ganador del premio.
+ */
+export const getGoldenBoyCandidates = async (req, res) => {
+  try {
+    if (goldenBoyCache.data && Date.now() - goldenBoyCache.ts < GOLDEN_BOY_CACHE_TTL) {
+      return res.json(goldenBoyCache.data);
+    }
+
+    const AGE_LIMIT = 21;
+
+    const [scorersRes, assistsRes] = await Promise.all([
+      axios.get(`${API_URL}/players/topscorers`, {
+        params: { league: 1, season: SEASON },
+        headers: { "x-apisports-key": API_KEY }, timeout: 8000,
+      }).catch((e) => { console.warn("topscorers error:", e.message); return { data: { response: [] } }; }),
+      axios.get(`${API_URL}/players/topassists`, {
+        params: { league: 1, season: SEASON },
+        headers: { "x-apisports-key": API_KEY }, timeout: 8000,
+      }).catch((e) => { console.warn("topassists error:", e.message); return { data: { response: [] } }; }),
+    ]);
+
+    const merged = new Map();
+    for (const entry of [...(scorersRes.data?.response || []), ...(assistsRes.data?.response || [])]) {
+      const p = entry.player;
+      if (!p || (p.age ?? 99) > AGE_LIMIT) continue;
+      const stats = entry.statistics?.[0];
+      const existing = merged.get(p.id) || {
+        id: p.id,
+        name: p.name,
+        photo: p.photo,
+        age: p.age,
+        team: stats?.team?.name,
+        teamLogo: stats?.team?.logo,
+        goals: 0,
+        assists: 0,
+      };
+      existing.goals = Math.max(existing.goals, stats?.goals?.total ?? 0);
+      existing.assists = Math.max(existing.assists, stats?.goals?.assists ?? 0);
+      merged.set(p.id, existing);
+    }
+
+    const candidates = Array.from(merged.values());
+
+    // Veces que fue figura del partido (MVP) — ya está en nuestra base, sin gastar requests
+    const normalize = (s) =>
+      String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+    const scoredDocs = await ProcessedFixture.find({ type: "scored", mvp: { $ne: null } }).select("mvp").lean();
+    const mvpNames = scoredDocs.map((d) => normalize(d.mvp));
+    for (const c of candidates) {
+      const nc = normalize(c.name);
+      c.mvpCount = mvpNames.filter((m) => m.includes(nc) || nc.includes(m)).length;
+    }
+
+    // Intercepciones y duelos ganados (estadística individual, una llamada por candidato).
+    // Secuencial para no disparar varias requests en simultáneo contra el límite de la API.
+    for (const c of candidates) {
+      try {
+        const r = await axios.get(`${API_URL}/players`, {
+          params: { id: c.id, league: 1, season: SEASON },
+          headers: { "x-apisports-key": API_KEY }, timeout: 8000,
+        });
+        const stats = r.data?.response?.[0]?.statistics?.[0];
+        c.interceptions = stats?.tackles?.interceptions ?? null;
+        c.duelsWon = stats?.duels?.won ?? null;
+      } catch (e) {
+        console.warn(`player stats error (${c.name}):`, e.message);
+        c.interceptions = null;
+        c.duelsWon = null;
+      }
+    }
+
+    candidates.sort((a, b) => (b.goals + b.assists) - (a.goals + a.assists));
+
+    goldenBoyCache = { data: candidates, ts: Date.now() };
+    res.json(candidates);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

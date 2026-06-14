@@ -14,7 +14,9 @@ const predictionSchema = new Schema({
   worldChampion: { type: String },
   bestPlayer: { type: String },
   topScorer: { type: String },
-  bestGoalkeeper: { type: String }
+  bestGoalkeeper: { type: String },
+  fairPlayTeam: { type: String },
+  bestYoungPlayer: { type: String }
 }, { timestamps: true });
 
 // Índice único por matchId (string externo de api-football)

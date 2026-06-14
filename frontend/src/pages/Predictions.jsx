@@ -139,6 +139,8 @@ const Predictions = () => {
                 pred.bestPlayer      && { icon: "⭐", label: "Golden Ball", value: pred.bestPlayer },
                 pred.topScorer       && { icon: "👟", label: "Goleador",   value: pred.topScorer },
                 pred.bestGoalkeeper  && { icon: "🧤", label: "Arquero",    value: pred.bestGoalkeeper },
+                pred.fairPlayTeam    && { icon: "🤝", label: "Fair Play",  value: pred.fairPlayTeam },
+                pred.bestYoungPlayer && { icon: "🌱", label: "Golden Boy", value: pred.bestYoungPlayer },
               ].filter(Boolean);
 
               if (items.length === 0) return null;

@@ -165,7 +165,7 @@ export const getExtras = async (req, res) => {
       user: req.user.id,
       matchId: { $exists: false },
       predictedScore: { $exists: false }
-    }).select("worldChampion bestPlayer topScorer bestGoalkeeper revelationTeam");
+    }).select("worldChampion bestPlayer topScorer bestGoalkeeper fairPlayTeam bestYoungPlayer revelationTeam");
     res.json(extras || {});
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -182,7 +182,7 @@ export const updateExtras = async (req, res) => {
       return res.status(400).json({ error: "Ya comenzaron los octavos de final, no se pueden modificar las apuestas globales." });
     }
 
-    const { worldChampion, bestPlayer, topScorer, bestGoalkeeper } = req.body;
+    const { worldChampion, bestPlayer, topScorer, bestGoalkeeper, fairPlayTeam, bestYoungPlayer } = req.body;
 
     // Documento exclusivo para extras (sin matchId ni predictedScore)
     const extras = await Prediction.findOneAndUpdate(
@@ -191,7 +191,7 @@ export const updateExtras = async (req, res) => {
         matchId: { $exists: false },
         predictedScore: { $exists: false }
       },
-      { worldChampion, bestPlayer, topScorer, bestGoalkeeper },
+      { worldChampion, bestPlayer, topScorer, bestGoalkeeper, fairPlayTeam, bestYoungPlayer },
       { new: true, upsert: true }
     );
 

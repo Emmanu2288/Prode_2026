@@ -137,6 +137,21 @@ const CATEGORIES = [
     type: "player",
     placeholder: "Ej: Emiliano Martínez",
   },
+  {
+    key: "fairPlayTeam",
+    icon: "🤝",
+    title: "Premio Fair Play",
+    desc: "La selección con mejor conducta deportiva del torneo",
+    type: "team",
+  },
+  {
+    key: "bestYoungPlayer",
+    icon: "🌱",
+    title: "Mejor Jugador Joven (Golden Boy)",
+    desc: "El mejor jugador joven (Sub-21) del torneo",
+    type: "player",
+    placeholder: "Ej: Lamine Yamal",
+  },
 ];
 
 const Extras = () => {
@@ -150,6 +165,8 @@ const Extras = () => {
     bestPlayer: "",
     topScorer: "",
     bestGoalkeeper: "",
+    fairPlayTeam: "",
+    bestYoungPlayer: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -161,10 +178,12 @@ const Extras = () => {
       .then((res) => {
         if (res.data && Object.keys(res.data).length > 0) {
           setForm({
-            worldChampion:  res.data.worldChampion  || "",
-            bestPlayer:     res.data.bestPlayer     || "",
-            topScorer:      res.data.topScorer      || "",
-            bestGoalkeeper: res.data.bestGoalkeeper || "",
+            worldChampion:   res.data.worldChampion   || "",
+            bestPlayer:      res.data.bestPlayer      || "",
+            topScorer:       res.data.topScorer       || "",
+            bestGoalkeeper:  res.data.bestGoalkeeper  || "",
+            fairPlayTeam:    res.data.fairPlayTeam    || "",
+            bestYoungPlayer: res.data.bestYoungPlayer || "",
           });
         }
       })

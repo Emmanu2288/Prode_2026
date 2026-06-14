@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getStandings } from "../services/match.service";
+import { getStandings, getGoldenBoyCandidates } from "../services/match.service";
 import BallIcon from "../components/BallIcon";
 
 const formBadgeColor = (r) => {
@@ -36,6 +36,49 @@ const TopScorers = ({ players }) => {
             <div className="text-right flex-shrink-0">
               <p className="text-lg font-bold text-green-600">{p.goals}</p>
               <p className="text-xs text-gray-400">goles</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+const GoldenBoyCandidates = ({ candidates, loading }) => {
+  if (loading || !candidates?.length) return null;
+  return (
+    <section className="bg-card rounded-xl border border-gray-100 p-4">
+      <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-1">
+        🌱 Candidatos a Mejor Jugador Joven (Sub-21)
+      </h2>
+      <p className="text-xs text-gray-400 mb-3">
+        Te puede ayudar a elegir tu pronóstico de "Golden Boy" en Extras: goles, asistencias, veces figura del partido, intercepciones y duelos ganados.
+      </p>
+      <div className="space-y-2">
+        {candidates.map((c) => (
+          <div key={c.id} className="flex items-center gap-3" style={{ padding: "6px 0" }}>
+            <img
+              src={c.photo}
+              alt={c.name}
+              className="w-9 h-9 rounded-full object-cover bg-gray-100 flex-shrink-0"
+              onError={(e) => { e.target.style.visibility = "hidden"; }}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-gray-800 truncate">{c.name}</p>
+                <span className="text-xs text-gray-400 flex-shrink-0">{c.age} años</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {c.teamLogo && <img src={c.teamLogo} alt="" className="w-4 h-4 object-contain" />}
+                <p className="text-xs text-gray-400 truncate">{c.team}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-gray-600 flex-shrink-0 justify-end" style={{ maxWidth: "130px" }}>
+              <span title="Goles">⚽ {c.goals}</span>
+              <span title="Asistencias">🅰️ {c.assists}</span>
+              <span title="Veces figura del partido">🌟 {c.mvpCount}</span>
+              <span title="Intercepciones">🛡️ {c.interceptions ?? "-"}</span>
+              <span title="Duelos ganados">🤼 {c.duelsWon ?? "-"}</span>
             </div>
           </div>
         ))}
@@ -108,6 +151,8 @@ const Standings = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [goldenBoy, setGoldenBoy] = useState([]);
+  const [loadingGoldenBoy, setLoadingGoldenBoy] = useState(true);
 
   useEffect(() => {
     const fetch = async () => {
@@ -121,6 +166,13 @@ const Standings = () => {
       }
     };
     fetch();
+  }, []);
+
+  useEffect(() => {
+    getGoldenBoyCandidates()
+      .then((res) => setGoldenBoy(res.data))
+      .catch(() => setGoldenBoy([]))
+      .finally(() => setLoadingGoldenBoy(false));
   }, []);
 
   if (loading) {
@@ -168,6 +220,8 @@ const Standings = () => {
       </div>
 
       <TopScorers players={topScorers} />
+
+      <GoldenBoyCandidates candidates={goldenBoy} loading={loadingGoldenBoy} />
 
       {standings.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
