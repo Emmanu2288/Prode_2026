@@ -83,6 +83,9 @@ const GoldenBoyCandidates = ({ candidates, loading }) => {
           </div>
         ))}
       </div>
+      <p className="text-xs text-gray-400 mt-3 pt-2 border-t border-gray-50">
+        ⚽ Goles · 🅰️ Asistencias · 🌟 Figura del partido · 🛡️ Intercepciones · 🤼 Duelos ganados
+      </p>
     </section>
   );
 };
