@@ -13,7 +13,7 @@ export const createPrediction = async (req, res) => {
 
     const blocked = await Membership.exists({ user: userId, enabled: false });
     if (blocked) {
-      return res.status(403).json({ error: "🔒 Todavía no podés pronosticar: falta confirmar tu pago. Si ya transferiste, avisale a tu admin para que te habilite." });
+      return res.status(403).json({ error: "🔒 Todavía no podés pronosticar: falta confirmar tu pago. Transferí a emmanuel.lv.mp (alias Mercado Pago) y avisale a tu admin para que te habilite." });
     }
 
     if (!match) {
@@ -90,7 +90,7 @@ export const updatePrediction = async (req, res) => {
 
     const blocked = await Membership.exists({ user: userId, enabled: false });
     if (blocked) {
-      return res.status(403).json({ error: "🔒 Todavía no podés pronosticar: falta confirmar tu pago. Si ya transferiste, avisale a tu admin para que te habilite." });
+      return res.status(403).json({ error: "🔒 Todavía no podés pronosticar: falta confirmar tu pago. Transferí a emmanuel.lv.mp (alias Mercado Pago) y avisale a tu admin para que te habilite." });
     }
 
     // Chequeo primario por horario de kickoff: no depende de la API externa
