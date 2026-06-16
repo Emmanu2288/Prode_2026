@@ -8,4 +8,5 @@ export const getFinishedMatches     = ()     => api.get("/admin/finished-matches
 export const setManualMvp           = (fixtureId, data) => api.post(`/admin/mvp/${fixtureId}`, data);
 export const generateResetLink      = (userId) => api.post(`/admin/users/${userId}/reset-link`);
 export const sendAnnouncement       = (data)   => api.post("/admin/announce", data);
+export const backfillDefaults       = ()       => api.post("/admin/backfill-defaults");
 export const deleteUser             = (userId) => api.delete(`/users/${userId}`);

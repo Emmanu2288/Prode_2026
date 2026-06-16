@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   getAdminUsers, getAdminGroups, getTournamentData,
   processTournamentAwards, getFinishedMatches, setManualMvp,
-  generateResetLink, sendAnnouncement, deleteUser,
+  generateResetLink, sendAnnouncement, deleteUser, backfillDefaults,
 } from "../services/admin.service";
 import { getFixturePlayers } from "../services/match.service";
 import useAuthStore from "../store/authStore";
@@ -192,6 +192,8 @@ const AwardsTab = () => {
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState(null);
 
   useEffect(() => {
     getTournamentData().then((r) => setData(r.data)).finally(() => setLoading(false));
@@ -207,6 +209,20 @@ const AwardsTab = () => {
       alert(err.response?.data?.error || "Error al procesar");
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleBackfill = async () => {
+    if (!window.confirm("¿Asignar 0-0 a todos los usuarios que no pronosticaron en partidos ya finalizados y recalcular sus puntos?")) return;
+    setBackfilling(true);
+    setBackfillResult(null);
+    try {
+      const r = await backfillDefaults();
+      setBackfillResult(r.data);
+    } catch (err) {
+      alert(err.response?.data?.error || "Error al ejecutar backfill");
+    } finally {
+      setBackfilling(false);
     }
   };
 
@@ -316,6 +332,27 @@ const AwardsTab = () => {
           ))}
         </div>
       )}
+
+      {/* Backfill de predicciones por defecto */}
+      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-yellow-800">🔧 Corregir pronósticos faltantes</h3>
+        <p className="text-xs text-yellow-700">
+          Asigna 0-0 a todos los usuarios que no pronosticaron en partidos ya finalizados y recalcula sus puntos.
+          Usalo una vez para corregir el historial — de ahora en adelante es automático.
+        </p>
+        {backfillResult && (
+          <div className="bg-white border border-yellow-200 rounded-lg px-3 py-2 text-xs text-yellow-800">
+            ✅ {backfillResult.matchesProcessed} partidos procesados · {backfillResult.defaultsCreated} pronósticos creados
+          </div>
+        )}
+        <button
+          onClick={handleBackfill}
+          disabled={backfilling}
+          className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors disabled:opacity-50"
+        >
+          {backfilling ? "Procesando..." : "Asignar 0-0 a los que no pronosticaron"}
+        </button>
+      </div>
     </div>
   );
 };

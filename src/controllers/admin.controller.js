@@ -7,6 +7,8 @@ import ProcessedFixture from "../models/ProcessedFixture.js";
 import { calculatePointsFinal, applyFinalPointsToPrediction, applyTournamentAwardPoints } from "../services/points.service.js";
 import { sendPushToAll } from "../services/push.service.js";
 import { broadcastAnnouncement } from "../services/notification.service.js";
+import { getWorldCup2026Matches } from "../services/match.service.js";
+import { reconcileMatch } from "../services/cron.service.js";
 
 const API_URL = "https://v3.football.api-sports.io";
 const API_KEY = process.env.FOOTBALL_API_KEY;
@@ -282,7 +284,21 @@ export const setManualMvp = async (req, res) => {
       } catch (e) { console.warn(e.message); }
     }
 
-    // Buscar predicciones del partido
+    // Asignar predicción 0-0 a cada usuario que no pronosticó este partido
+    const allUserIds = await User.distinct("_id");
+    const predUserIds = await Prediction.distinct("user", { matchId: String(fixtureId) });
+    const predUserSet = new Set(predUserIds.map(String));
+    for (const uid of allUserIds) {
+      if (!predUserSet.has(String(uid))) {
+        try {
+          await Prediction.create({ user: uid, matchId: String(fixtureId), predictedScore: "0-0" });
+        } catch (e) {
+          if (e.code !== 11000) console.warn(`assignDefault ${fixtureId}/${uid}:`, e.message);
+        }
+      }
+    }
+
+    // Buscar predicciones del partido (incluye las recién creadas por defecto)
     const preds = await Prediction.find({ matchId: String(fixtureId) });
     const normalize = (s) =>
       String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
@@ -302,6 +318,40 @@ export const setManualMvp = async (req, res) => {
     );
 
     res.json({ mvp: mvpName, predictionsUpdated: updated, finalGoals });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ─── Backfill de predicciones por defecto ────────────────────────────────────
+
+/**
+ * POST /api/admin/backfill-defaults
+ * Para cada partido ya finalizado y puntuado, asigna pronóstico 0-0 a todos los
+ * usuarios que no pronosticaron y recalcula sus puntos. Se ejecuta una sola vez
+ * para corregir el historial; de ahora en adelante el cron lo hace automático.
+ */
+export const backfillDefaultPredictions = async (req, res) => {
+  try {
+    const allMatches = await getWorldCup2026Matches({ params: { status: "FT" } });
+    const list = Array.isArray(allMatches) ? allMatches : [];
+
+    let matchesProcessed = 0;
+    let defaultsCreated = 0;
+
+    for (const fixture of list) {
+      const matchId = String(fixture.fixture?.id);
+      const already = await ProcessedFixture.findOne({ matchId, type: "scored" });
+      if (!already) continue;
+
+      const before = await Prediction.countDocuments({ matchId });
+      await reconcileMatch(fixture);
+      const after = await Prediction.countDocuments({ matchId });
+      defaultsCreated += Math.max(0, after - before);
+      matchesProcessed++;
+    }
+
+    res.json({ matchesProcessed, defaultsCreated });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

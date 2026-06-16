@@ -72,6 +72,20 @@ export const reconcileMatch = async (fixture) => {
   const finalGoals = fixture.goals ?? fixture.score ?? { home: 0, away: 0 };
   const finalMvp = fixture.mvp ?? null;
 
+  // Asignar predicción 0-0 a cada usuario que no pronosticó este partido
+  const allUserIds = await User.distinct("_id");
+  const predUserIds = await Prediction.distinct("user", { matchId });
+  const predUserSet = new Set(predUserIds.map(String));
+  for (const uid of allUserIds) {
+    if (!predUserSet.has(String(uid))) {
+      try {
+        await Prediction.create({ user: uid, matchId, predictedScore: "0-0" });
+      } catch (e) {
+        if (e.code !== 11000) console.warn(`assignDefault ${matchId}/${uid}:`, e.message);
+      }
+    }
+  }
+
   // Buscar predicciones por matchId (string) en lugar de match (ObjectId)
   const preds = await Prediction.find({ matchId }).lean();
   if (!preds || preds.length === 0) {

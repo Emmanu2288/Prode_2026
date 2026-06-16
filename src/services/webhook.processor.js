@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import ProcessedFixture from "../models/ProcessedFixture.js";
 import Prediction from "../models/Prediction.js";
+import User from "../models/User.js";
 import { calculatePointsFinal, applyFinalPointsToPrediction, applyTournamentAwardPoints } from "./points.service.js";
 import { getFixtureMvp } from "./match.service.js";
 
@@ -107,6 +108,20 @@ export const processWebhookEvent = async (payload) => {
       const payloadMvp = fixture?.mvp ?? payload?.mvp ?? null;
       const finalMvp = payloadMvp ?? await getFixtureMvp(matchId);
       if (finalMvp) console.log(`processWebhookEvent: MVP del partido ${matchId}: ${finalMvp}`);
+
+      // Asignar predicción 0-0 a cada usuario que no pronosticó este partido
+      const allUserIds = await User.distinct("_id");
+      const predUserIds = await Prediction.distinct("user", { matchId });
+      const predUserSet = new Set(predUserIds.map(String));
+      for (const uid of allUserIds) {
+        if (!predUserSet.has(String(uid))) {
+          try {
+            await Prediction.create({ user: uid, matchId, predictedScore: "0-0" });
+          } catch (e) {
+            if (e.code !== 11000) console.warn(`assignDefault ${matchId}/${uid}:`, e.message);
+          }
+        }
+      }
 
       // Construir query segura para buscar predicciones sin provocar CastError
       let preds = [];

@@ -9,6 +9,7 @@ import {
   getFinishedMatches,
   setManualMvp,
   sendAnnouncement,
+  backfillDefaultPredictions,
 } from "../controllers/admin.controller.js";
 import { adminGenerateResetLink } from "../controllers/auth.controller.js";
 
@@ -24,6 +25,7 @@ export const initAdminRoutes = (app) => {
   router.post("/mvp/:fixtureId",     ...admin, setManualMvp);
   router.post("/users/:userId/reset-link", ...admin, adminGenerateResetLink);
   router.post("/announce",                 ...admin, sendAnnouncement);
+  router.post("/backfill-defaults",        ...admin, backfillDefaultPredictions);
 
   app.use("/api/admin", router);
 };
