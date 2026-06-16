@@ -8,7 +8,6 @@ import { calculatePointsFinal, applyFinalPointsToPrediction, applyTournamentAwar
 import { sendPushToAll } from "../services/push.service.js";
 import { broadcastAnnouncement } from "../services/notification.service.js";
 import { getWorldCup2026Matches } from "../services/match.service.js";
-import { reconcileMatch } from "../services/cron.service.js";
 
 const API_URL = "https://v3.football.api-sports.io";
 const API_KEY = process.env.FOOTBALL_API_KEY;
@@ -341,13 +340,40 @@ export const backfillDefaultPredictions = async (req, res) => {
 
     for (const fixture of list) {
       const matchId = String(fixture.fixture?.id);
-      const already = await ProcessedFixture.findOne({ matchId, type: "scored" });
-      if (!already) continue;
 
-      const before = await Prediction.countDocuments({ matchId });
-      await reconcileMatch(fixture);
-      const after = await Prediction.countDocuments({ matchId });
-      defaultsCreated += Math.max(0, after - before);
+      // Solo procesar partidos ya puntuados
+      const pf = await ProcessedFixture.findOne({ matchId, type: "scored" });
+      if (!pf) continue;
+
+      // MVP guardado en ProcessedFixture (no en el fixture de la API, que no lo tiene)
+      const storedMvp = pf.mvp ?? null;
+
+      // Validar goles antes de procesar
+      const goals = fixture.goals;
+      if (!goals || goals.home == null || goals.away == null) continue;
+
+      // Asignar predicción 0-0 a cada usuario que no pronosticó este partido
+      const allUserIds = await User.distinct("_id");
+      const predUserIds = await Prediction.distinct("user", { matchId });
+      const predUserSet = new Set(predUserIds.map(String));
+      for (const uid of allUserIds) {
+        if (!predUserSet.has(String(uid))) {
+          try {
+            await Prediction.create({ user: uid, matchId, predictedScore: "0-0" });
+            defaultsCreated++;
+          } catch (e) {
+            if (e.code !== 11000) console.warn(`assignDefault ${matchId}/${uid}:`, e.message);
+          }
+        }
+      }
+
+      // Re-puntuar TODAS las predicciones con el MVP correcto (delta-safe: restaura puntos perdidos)
+      const preds = await Prediction.find({ matchId });
+      for (const pred of preds) {
+        const points = calculatePointsFinal(pred, goals, storedMvp);
+        await applyFinalPointsToPrediction(pred, points);
+      }
+
       matchesProcessed++;
     }
 
