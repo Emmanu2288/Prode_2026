@@ -83,22 +83,26 @@ const PointsEvolutionChart = ({ data, loading }) => {
           const rankDiff = prevRank != null ? prevRank - user.rank : 0;
           const medal = MEDAL_COLOR[user.rank - 1] ?? null;
 
+          const rowBg =
+            user.rank === 1 ? "bg-yellow-50" :
+            user.rank === 2 ? "bg-gray-100" :
+            user.rank === 3 ? "bg-orange-50" :
+            "bg-gray-50";
+
+          const movColor =
+            rankDiff > 0 ? "text-green-600" :
+            rankDiff < 0 ? "text-red-500" :
+            "text-gray-400";
+
           return (
             <div
               key={user.userId}
-              className="flex items-center gap-2 rounded-lg px-3 py-2"
-              style={{ background: medal ? `${medal}18` : "#f9fafb" }}
+              className={`flex items-center gap-2 rounded-lg px-3 py-2 ${rowBg}`}
             >
               {/* Badge posición */}
               <span
-                className="flex items-center justify-center rounded-full text-xs font-bold flex-shrink-0"
-                style={{
-                  width: "1.5rem",
-                  height: "1.5rem",
-                  minWidth: "1.5rem",
-                  background: medal ?? "#e5e7eb",
-                  color: medal ? "#fff" : "#6b7280",
-                }}
+                className={`flex items-center justify-center rounded-full text-xs font-bold flex-shrink-0 ${!medal ? "bg-gray-200 text-gray-500" : ""}`}
+                style={medal ? { background: medal, color: "#fff", width: "1.5rem", height: "1.5rem", minWidth: "1.5rem" } : { width: "1.5rem", height: "1.5rem", minWidth: "1.5rem" }}
               >
                 {user.rank}
               </span>
@@ -110,12 +114,8 @@ const PointsEvolutionChart = ({ data, loading }) => {
 
               {/* Movimiento de posición */}
               <span
-                className="text-xs font-bold flex-shrink-0 text-right"
-                style={{
-                  minWidth: "2rem",
-                  color:
-                    rankDiff > 0 ? "#16a34a" : rankDiff < 0 ? "#ef4444" : "#d1d5db",
-                }}
+                className={`text-xs font-bold flex-shrink-0 text-right ${movColor}`}
+                style={{ minWidth: "2rem" }}
               >
                 {effectiveIdx === 0 || rankDiff === 0
                   ? "—"
