@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getStandings, getGoldenBoyCandidates } from "../services/match.service";
+import { getStandings, getGoldenBoyCandidates, getFairPlayStats } from "../services/match.service";
 import BallIcon from "../components/BallIcon";
 
 const formBadgeColor = (r) => {
@@ -90,6 +90,50 @@ const GoldenBoyCandidates = ({ candidates, loading }) => {
   );
 };
 
+const FairPlayTable = ({ teams, loading }) => {
+  if (loading || !teams?.length) return null;
+  return (
+    <section className="bg-card rounded-xl border border-gray-100 p-4">
+      <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-1">
+        🤝 Fair Play — Tarjetas por selección
+      </h2>
+      <p className="text-xs text-gray-400 mb-3">
+        Ordenado de menor a mayor cantidad de tarjetas. Te ayuda a elegir tu pronóstico de Fair Play en Extras.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm" style={{ minWidth: "300px" }}>
+          <thead>
+            <tr className="text-xs text-gray-400 uppercase">
+              <th className="text-left px-2 py-1.5">#</th>
+              <th className="text-left px-2 py-1.5">Selección</th>
+              <th className="px-3 py-1.5 text-center">🟨</th>
+              <th className="px-3 py-1.5 text-center">🟥</th>
+            </tr>
+          </thead>
+          <tbody>
+            {teams.map((t, i) => (
+              <tr key={t.id} className={`border-t border-gray-50 ${i === 0 ? "bg-green-50/60" : ""}`}>
+                <td className="px-2 py-2 font-semibold text-gray-400 text-xs">{i + 1}</td>
+                <td className="px-2 py-2">
+                  <div className="flex items-center gap-2">
+                    <img src={t.logo} alt="" className="w-5 h-5 object-contain flex-shrink-0" />
+                    <span className="font-medium text-gray-800 truncate">{t.name}</span>
+                  </div>
+                </td>
+                <td className="px-3 py-2 text-center font-semibold text-yellow-600">{t.yellow}</td>
+                <td className="px-3 py-2 text-center font-semibold text-red-500">{t.red}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-gray-400 mt-2 pt-2 border-t border-gray-50">
+        🟨 Amarillas · 🟥 Rojas
+      </p>
+    </section>
+  );
+};
+
 const GroupTable = ({ group, teams }) => (
   <section className="bg-card rounded-xl border border-gray-100 overflow-hidden">
     <h2 className="text-sm font-semibold text-gray-700 px-4 py-3 border-b border-gray-100">
@@ -156,6 +200,8 @@ const Standings = () => {
   const [error, setError] = useState(null);
   const [goldenBoy, setGoldenBoy] = useState([]);
   const [loadingGoldenBoy, setLoadingGoldenBoy] = useState(true);
+  const [fairPlay, setFairPlay] = useState([]);
+  const [loadingFairPlay, setLoadingFairPlay] = useState(true);
 
   useEffect(() => {
     const fetch = async () => {
@@ -176,6 +222,13 @@ const Standings = () => {
       .then((res) => setGoldenBoy(res.data))
       .catch(() => setGoldenBoy([]))
       .finally(() => setLoadingGoldenBoy(false));
+  }, []);
+
+  useEffect(() => {
+    getFairPlayStats()
+      .then((res) => setFairPlay(res.data))
+      .catch(() => setFairPlay([]))
+      .finally(() => setLoadingFairPlay(false));
   }, []);
 
   if (loading) {
@@ -217,7 +270,7 @@ const Standings = () => {
         <div className="relative flex items-center justify-between" style={{ padding: "clamp(1.25rem, 4vw, 2.5rem) clamp(1rem, 4vw, 3rem)" }}>
           <div>
             <h1 className="text-3xl font-bold text-white tracking-tight">Tabla de posiciones</h1>
-            <p className="text-green-300 text-sm mt-1">FIFA World Cup 2026 · Fase de grupos</p>
+            <p className="text-green-300 text-sm mt-1">FIFA World Cup 2026</p>
           </div>
         </div>
       </div>
@@ -225,6 +278,8 @@ const Standings = () => {
       <TopScorers players={topScorers} />
 
       <GoldenBoyCandidates candidates={goldenBoy} loading={loadingGoldenBoy} />
+
+      <FairPlayTable teams={fairPlay} loading={loadingFairPlay} />
 
       {standings.length === 0 ? (
         <div className="text-center py-12 text-gray-400">

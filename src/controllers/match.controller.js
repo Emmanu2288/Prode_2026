@@ -258,6 +258,9 @@ export const getStandings = async (req, res) => {
 let goldenBoyCache = { data: null, ts: 0 };
 const GOLDEN_BOY_CACHE_TTL = 10 * 60_000;
 
+let fairPlayCache = { data: null, ts: 0 };
+const FAIR_PLAY_CACHE_TTL = 6 * 60 * 60_000; // 6 horas
+
 /**
  * GET /api/matches/golden-boy-candidates
  * Devuelve jugadores Sub-21 destacados (goleadores + asistencias) con datos
@@ -340,5 +343,60 @@ export const getGoldenBoyCandidates = async (req, res) => {
     res.json(candidates);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * GET /api/matches/fair-play
+ * Tarjetas (amarillas + rojas) acumuladas por selección en los partidos ya puntuados.
+ * Ayuda a los usuarios a elegir su pronóstico de Fair Play en Extras.
+ * Cache de 6 horas para no gastar requests de la API en cada visita.
+ */
+export const getFairPlayStats = async (req, res) => {
+  try {
+    if (fairPlayCache.data && Date.now() - fairPlayCache.ts < FAIR_PLAY_CACHE_TTL) {
+      return res.json(fairPlayCache.data);
+    }
+
+    const matchIds = await ProcessedFixture.distinct("matchId", { type: "scored" });
+    if (!matchIds.length) return res.json([]);
+
+    const teamCards = {};
+
+    // Procesamos en lotes de 5 para no saturar la API
+    const BATCH = 5;
+    for (let i = 0; i < matchIds.length; i += BATCH) {
+      const batch = matchIds.slice(i, i + BATCH);
+      await Promise.all(batch.map(async (matchId) => {
+        try {
+          const r = await axios.get(`${API_URL}/fixtures/statistics`, {
+            params: { fixture: matchId },
+            headers: { "x-apisports-key": API_KEY },
+            timeout: 8000,
+          });
+          for (const teamStats of r.data?.response ?? []) {
+            const { id, name, logo } = teamStats.team ?? {};
+            if (!id) continue;
+            const yellow = teamStats.statistics?.find((s) => s.type === "Yellow Cards")?.value ?? 0;
+            const red = teamStats.statistics?.find((s) => s.type === "Red Cards")?.value ?? 0;
+            if (!teamCards[id]) teamCards[id] = { id, name, logo, yellow: 0, red: 0 };
+            teamCards[id].yellow += Number(yellow) || 0;
+            teamCards[id].red += Number(red) || 0;
+          }
+        } catch (e) {
+          console.warn(`getFairPlayStats fixture ${matchId}:`, e.message);
+        }
+      }));
+    }
+
+    // Ordenar por menor "peso" de tarjetas (rojas pesan 3x más que amarillas)
+    const sorted = Object.values(teamCards).sort(
+      (a, b) => (a.yellow + a.red * 3) - (b.yellow + b.red * 3)
+    );
+
+    fairPlayCache = { data: sorted, ts: Date.now() };
+    return res.json(sorted);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
 };

@@ -3,6 +3,7 @@ import useMatches from "../hooks/useMatches";
 import useLiveMatches from "../hooks/useLiveMatches";
 import MatchCard from "../components/fixtures/MatchCard";
 import RoundFilter from "../components/fixtures/RoundFilter";
+import { formatRound } from "../utils/roundUtils";
 import BallIcon from "../components/BallIcon";
 
 const Fixtures = () => {
@@ -78,7 +79,7 @@ const Fixtures = () => {
       {selectedRound && (
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-600">
-            {selectedRound.replace("Group Stage - ", "Fase de grupos · Fecha ")}
+            {formatRound(selectedRound)}
           </h2>
           <span className="text-xs text-gray-400">
             {currentMatches.length} partido{currentMatches.length !== 1 ? "s" : ""}

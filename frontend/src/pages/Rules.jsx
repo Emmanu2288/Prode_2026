@@ -64,9 +64,14 @@ const Rules = () => {
             <div className="bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700">⭐ Balón de Oro (mejor jugador)</div>
             <div className="bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700">👟 Bota de Oro (goleador)</div>
             <div className="bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700">🧤 Mejor arquero</div>
+            <div className="bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700">🌱 Golden Boy (mejor jugador joven Sub-21)</div>
+            <div className="bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700">🤝 Fair Play (selección con menos tarjetas)</div>
           </div>
           <p className="text-sm text-gray-600 mt-3">
             Cada acierto vale <b className="text-green-600">5 puntos</b>. Estos pronósticos se cierran al inicio de los octavos de final (27 de junio).
+          </p>
+          <p className="text-xs text-gray-400 mt-2">
+            💡 En la página <b>Tabla</b> encontrás candidatos al Golden Boy y el ranking de Fair Play por selección para ayudarte a elegir.
           </p>
         </div>
 
