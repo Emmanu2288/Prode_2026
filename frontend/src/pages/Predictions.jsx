@@ -4,18 +4,62 @@ import { getMyPredictions } from "../services/prediction.service";
 import useMatches from "../hooks/useMatches";
 import BallIcon from "../components/BallIcon";
 
-const statusColor = (points, status) => {
-  if (status === "NS") return "bg-gray-100 text-gray-500";
-  if (points === 3) return "bg-green-100 text-green-700";
-  if (points === 1) return "bg-yellow-100 text-yellow-700";
+const FINISHED = new Set(["FT", "AET", "PEN"]);
+
+const normalizeName = (s) =>
+  String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+
+const getScoreBreakdown = (pred, matchData) => {
+  const status = matchData?.fixture?.status?.short;
+  if (!FINISHED.has(status) || !matchData?.goals || !pred?.predictedScore) {
+    return { base: 0, mvpBonus: 0, isExact: false };
+  }
+  const [ph, pa] = String(pred.predictedScore).split("-").map(Number);
+  const fh = Number(matchData.goals.home);
+  const fa = Number(matchData.goals.away);
+  let base = 0;
+  let isExact = false;
+  if (ph === fh && pa === fa) { base = 3; isExact = true; }
+  else if (Math.sign(ph - pa) === Math.sign(fh - fa)) base = 1;
+
+  let mvpBonus = 0;
+  const predMvp = pred.mvpPlayer ?? pred.mvp ?? null;
+  const actualMvp = matchData?.mvp ?? null;
+  if (predMvp && actualMvp) {
+    const p = normalizeName(predMvp);
+    const a = normalizeName(actualMvp);
+    if (a.includes(p) || p.includes(a)) mvpBonus = 2;
+  }
+  return { base, mvpBonus, isExact };
+};
+
+const statusColor = (pred, matchData) => {
+  const status = matchData?.fixture?.status?.short ?? "NS";
+  if (!FINISHED.has(status)) return "bg-gray-100 text-gray-500";
+  const { base, mvpBonus } = getScoreBreakdown(pred, matchData);
+  const total = base + mvpBonus;
+  if (total >= 3) return "bg-green-100 text-green-700";
+  if (total >= 1) return "bg-yellow-100 text-yellow-700";
   return "bg-red-100 text-red-500";
 };
 
-const statusLabel = (points, status) => {
-  if (status === "NS") return "Pendiente";
-  if (points === 3) return "✅ Exacto +3";
-  if (points === 1) return "〰️ Ganador +1";
-  return "❌ Sin puntos";
+const statusLabel = (pred, matchData) => {
+  const status = matchData?.fixture?.status?.short ?? "NS";
+  if (!FINISHED.has(status)) return "Pendiente";
+  const { base, mvpBonus, isExact } = getScoreBreakdown(pred, matchData);
+  if (base === 0 && mvpBonus === 0) return "❌ Sin puntos";
+  const parts = [];
+  if (isExact) parts.push("Exacto +3");
+  else if (base === 1) parts.push("Ganador +1");
+  if (mvpBonus > 0) parts.push("🌟 MVP +2");
+  return "✅ " + parts.join(" · ");
+};
+
+const formatRoundShort = (r) => {
+  if (!r) return "";
+  if (r.startsWith("Group Stage - ")) return "Fecha " + r.replace("Group Stage - ", "");
+  const map = { "Round of 16": "Octavos", "Quarter-finals": "Cuartos", "Semi-finals": "Semis", "3rd Place Final": "3er puesto", "Third Place Final": "3er puesto", Final: "Final" };
+  return map[r] || r;
 };
 
 const Predictions = () => {
@@ -80,17 +124,19 @@ const Predictions = () => {
           const s = matchMap[p.matchId]?.fixture?.status?.short;
           return ["FT","AET","PEN"].includes(s);
         });
-        const exact    = finished.filter(p => p.points >= 3).length;
-        const winner   = finished.filter(p => p.points === 1).length;
-        const wrong    = finished.filter(p => p.points === 0).length;
-        const accuracy = finished.length > 0 ? Math.round(((exact + winner) / finished.length) * 100) : null;
+        const exact      = finished.filter(p => getScoreBreakdown(p, matchMap[p.matchId]).isExact).length;
+        const winner     = finished.filter(p => getScoreBreakdown(p, matchMap[p.matchId]).base === 1).length;
+        const wrong      = finished.filter(p => getScoreBreakdown(p, matchMap[p.matchId]).base === 0).length;
+        const mvpCorrect = finished.filter(p => getScoreBreakdown(p, matchMap[p.matchId]).mvpBonus > 0).length;
+        const accuracy   = finished.length > 0 ? Math.round(((exact + winner) / finished.length) * 100) : null;
 
         return (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {[
-              { label: "Exactos",  value: exact,    icon: "🎯", color: "#16a34a" },
-              { label: "Ganador",  value: winner,   icon: "✅", color: "#2563eb" },
-              { label: "Fallados", value: wrong,    icon: "❌", color: "#dc2626" },
+              { label: "Exactos",  value: exact,       icon: "🎯", color: "#16a34a" },
+              { label: "Ganador",  value: winner,      icon: "✅", color: "#2563eb" },
+              { label: "MVP",      value: mvpCorrect,  icon: "🌟", color: "#d97706" },
+              { label: "Fallados", value: wrong,       icon: "❌", color: "#dc2626" },
               { label: "Acierto",  value: accuracy !== null ? `${accuracy}%` : "—", icon: "📊", color: "#7c3aed" },
             ].map(s => (
               <div key={s.label} className="bg-card rounded-xl border border-gray-100 text-center" style={{ padding: "14px 12px" }}>
@@ -177,7 +223,7 @@ const Predictions = () => {
                         {teams.home.name} vs {teams.away.name}
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {matchData?.league?.round?.replace("Group Stage - ", "Fecha ")}
+                        {formatRoundShort(matchData?.league?.round)}
                       </p>
                     </div>
                     <img src={teams.away.logo} alt={teams.away.name} className="w-8 h-8 object-contain flex-shrink-0" />
@@ -199,8 +245,8 @@ const Predictions = () => {
                         <p className="text-sm font-bold text-green-600">{pred.predictedScore}</p>
                       </div>
                     </div>
-                    <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(pred.points, status)}`}>
-                      {statusLabel(pred.points, status)}
+                    <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(pred, matchData)}`}>
+                      {statusLabel(pred, matchData)}
                     </span>
                   </div>
                 )}
