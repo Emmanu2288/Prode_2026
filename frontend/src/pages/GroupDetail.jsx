@@ -13,7 +13,9 @@ import {
   inviteToGroup,
   addGroupMember,
   updateGroup,
+  getGroupEvolution,
 } from "../services/group.service";
+import PointsEvolutionChart from "../components/PointsEvolutionChart";
 import useMatches from "../hooks/useMatches";
 import useAuthStore from "../store/authStore";
 
@@ -34,6 +36,8 @@ const GroupDetail = () => {
   const [payments, setPayments] = useState([]);
   const [amountDraft, setAmountDraft] = useState(null);
   const [savingAmount, setSavingAmount] = useState(false);
+  const [evolution, setEvolution] = useState(null);
+  const [loadingEvolution, setLoadingEvolution] = useState(true);
 
   // Invitar — búsqueda de usuarios registrados
   const [searchQuery, setSearchQuery] = useState("");
@@ -70,6 +74,13 @@ const GroupDetail = () => {
       }
     };
     load();
+  }, [groupId]);
+
+  useEffect(() => {
+    getGroupEvolution(groupId)
+      .then((r) => setEvolution(r.data))
+      .catch(() => setEvolution(null))
+      .finally(() => setLoadingEvolution(false));
   }, [groupId]);
 
   // Buscar usuarios con debounce
@@ -271,6 +282,8 @@ const GroupDetail = () => {
               </div>
             ))
           )}
+
+          <PointsEvolutionChart data={evolution} loading={loadingEvolution} />
         </div>
       )}
 

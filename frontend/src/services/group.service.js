@@ -20,3 +20,5 @@ export const toggleMemberEnabled   = (groupId, userId, enabled) =>
 export const getPendingInvitations = ()          => api.get("/invitations/pending");
 export const acceptInvitation  = (token)         => api.post("/invitations/accept", { token });
 export const rejectInvitation  = (token)         => api.post(`/invitations/${token}/reject`);
+
+export const getGroupEvolution = (id) => api.get(`/groups/${id}/evolution`);

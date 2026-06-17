@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { createGroup, inviteToGroup, getGroupMembers, addMemberDirect, getMyGroups, getGroupById, getGroupPredictions, deleteGroup, updateGroup } from "../controllers/group.controller.js";
-import { getGroupLeaderboard } from "../controllers/groupPoints.controller.js";
+import { getGroupLeaderboard, getPointsEvolution } from "../controllers/groupPoints.controller.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
 import { roleMiddleware } from "../middlewares/role.middleware.js";
 
@@ -30,6 +30,9 @@ export const initGroupRoutes = (app) => {
 
   // Leaderboard del grupo
   router.get("/:groupId/leaderboard", verifyToken, getGroupLeaderboard);
+
+  // Evolución de puntos por partido
+  router.get("/:groupId/evolution", verifyToken, getPointsEvolution);
 
   // Predicciones de todos los miembros del grupo, agrupadas por partido
   router.get("/:groupId/predictions", verifyToken, getGroupPredictions);
