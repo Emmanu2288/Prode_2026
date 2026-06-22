@@ -16,6 +16,8 @@ import {
   getGroupEvolution,
 } from "../services/group.service";
 import PointsEvolutionChart from "../components/PointsEvolutionChart";
+import RoundFilter from "../components/fixtures/RoundFilter";
+import { formatRound } from "../utils/roundUtils";
 import useMatches from "../hooks/useMatches";
 import useAuthStore from "../store/authStore";
 
@@ -38,6 +40,7 @@ const GroupDetail = () => {
   const [savingAmount, setSavingAmount] = useState(false);
   const [evolution, setEvolution] = useState(null);
   const [loadingEvolution, setLoadingEvolution] = useState(true);
+  const [selectedPartidosRound, setSelectedPartidosRound] = useState(null);
 
   // Invitar — búsqueda de usuarios registrados
   const [searchQuery, setSearchQuery] = useState("");
@@ -288,19 +291,58 @@ const GroupDetail = () => {
       )}
 
       {/* Tab: Partidos */}
-      {tab === "partidos" && (
-        <div className="space-y-3">
-          {matches
-            .filter((m) => groupPredictions[String(m.fixture.id)])
-            .map((m) => {
+      {tab === "partidos" && (() => {
+        const FINISHED = new Set(["FT", "AET", "PEN"]);
+
+        const matchesWithPreds = matches.filter((m) => groupPredictions[String(m.fixture.id)]);
+
+        // Rounds únicos en el orden que vienen de la API
+        const availableRounds = [...new Set(matchesWithPreds.map((m) => m.league.round))];
+
+        // Auto-selección: primer round con partidos NS, o el primero disponible
+        const autoRound = availableRounds.find((r) =>
+          matchesWithPreds.some((m) => m.league.round === r && !FINISHED.has(m.fixture.status.short))
+        ) ?? availableRounds[0];
+
+        const effectiveRound = selectedPartidosRound ?? autoRound;
+
+        // Filtrar por round y ordenar: por jugar primero, finalizados al final
+        const visibleMatches = matchesWithPreds
+          .filter((m) => m.league.round === effectiveRound)
+          .sort((a, b) => {
+            const aFin = FINISHED.has(a.fixture.status.short);
+            const bFin = FINISHED.has(b.fixture.status.short);
+            if (aFin !== bFin) return aFin ? 1 : -1;
+            return new Date(a.fixture.date) - new Date(b.fixture.date);
+          });
+
+        if (matchesWithPreds.length === 0) {
+          return (
+            <div className="text-center py-12 text-gray-400">
+              <BallIcon className="w-9 h-9" />
+              <p className="mt-2 text-sm">Ningún miembro ha pronosticado partidos todavía</p>
+            </div>
+          );
+        }
+
+        return (
+          <div className="space-y-3">
+            {/* Filtro por ronda */}
+            <RoundFilter
+              rounds={availableRounds}
+              selected={effectiveRound}
+              onChange={setSelectedPartidosRound}
+            />
+
+            {/* Lista de partidos */}
+            {visibleMatches.map((m) => {
               const preds = groupPredictions[String(m.fixture.id)] || [];
               const isSelected = selectedMatch === m.fixture.id;
               const status = m.fixture.status.short;
-              const isFinished = ["FT","AET","PEN"].includes(status);
+              const isFinished = FINISHED.has(status);
 
               return (
                 <div key={m.fixture.id} className="bg-card rounded-xl border border-gray-100 overflow-hidden">
-                  {/* Cabecera del partido */}
                   <button
                     onClick={() => setSelectedMatch(isSelected ? null : m.fixture.id)}
                     className="w-full flex items-center justify-between hover:bg-gray-50 transition-colors"
@@ -313,13 +355,11 @@ const GroupDetail = () => {
                           {m.teams.home.name} vs {m.teams.away.name}
                         </p>
                         <p className="text-xs text-gray-400">
-                          {m.league.round.replace("Group Stage - ", "Fecha ")} ·{" "}
+                          {formatRound(m.league.round)} ·{" "}
                           {isFinished ? `${m.goals.home}–${m.goals.away} FT` : "Por jugar"}
                         </p>
                         {isFinished && m.mvp && (
-                          <p className="text-xs text-yellow-600 font-medium truncate">
-                            ⭐ MVP: {m.mvp}
-                          </p>
+                          <p className="text-xs text-yellow-600 font-medium truncate">⭐ MVP: {m.mvp}</p>
                         )}
                       </div>
                       <img src={m.teams.away.logo} alt="" className="w-7 h-7 object-contain" />
@@ -330,7 +370,6 @@ const GroupDetail = () => {
                     </div>
                   </button>
 
-                  {/* Predicciones de los miembros */}
                   {isSelected && (
                     <div className="border-t border-gray-100 divide-y divide-gray-50">
                       {preds.map((p, i) => (
@@ -368,14 +407,9 @@ const GroupDetail = () => {
                 </div>
               );
             })}
-          {matches.filter(m => groupPredictions[String(m.fixture.id)]).length === 0 && (
-            <div className="text-center py-12 text-gray-400">
-              <BallIcon className="w-9 h-9" />
-              <p className="mt-2 text-sm">Ningún miembro ha pronosticado partidos todavía</p>
-            </div>
-          )}
-        </div>
-      )}
+          </div>
+        );
+      })()}
 
       {/* Tab: Pagos (solo admin) */}
       {tab === "pagos" && user?.role === "admin" && (() => {
