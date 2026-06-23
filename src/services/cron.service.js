@@ -12,6 +12,8 @@ import { sendPushToAll } from "./push.service.js";
 
 // Registro de partidos ya notificados para no repetir
 const notifiedMatches = new Set();
+// Flag para no enviar el recordatorio de Extras más de una vez
+let extraReminderSent = false;
 
 const CORRECTION_ALERT_THRESHOLD = Number(process.env.CORRECTION_ALERT_THRESHOLD || 10);
 const MAX_PARALLEL_USERS = Number(process.env.MAX_PARALLEL_USERS || 50);
@@ -234,7 +236,40 @@ const scheduleMatchReminders = () => {
   });
 };
 
+// Cron: recordatorio push 24h antes de que cierren los Extras (inicio de octavos)
+const scheduleExtrasReminder = () => {
+  // Se ejecuta cada hora para no depender de que el servidor esté corriendo a medianoche exacta
+  cron.schedule("0 * * * *", async () => {
+    if (extraReminderSent) return;
+    try {
+      const matches = await getWorldCup2026Matches();
+      const firstR16 = matches
+        .filter((m) => m.league.round === "Round of 16" && m.fixture.status.short === "NS")
+        .sort((a, b) => new Date(a.fixture.date) - new Date(b.fixture.date))[0];
+
+      if (!firstR16) return;
+
+      const r16Date = new Date(firstR16.fixture.date);
+      const hoursUntil = (r16Date - new Date()) / (1000 * 60 * 60);
+
+      // Ventana: entre 20h y 28h antes del primer octavo
+      if (hoursUntil > 0 && hoursUntil <= 28 && hoursUntil >= 20) {
+        extraReminderSent = true;
+        await sendPushToAll({
+          title: "⏰ ¡Últimas horas para los Extras!",
+          body: "Mañana empiezan los octavos. ¡Completá tus pronósticos extras antes que cierren!",
+          url: "/extras",
+        });
+        console.log("Extras reminder enviado. Primer octavo:", r16Date.toISOString());
+      }
+    } catch (err) {
+      console.error("scheduleExtrasReminder error:", err.message);
+    }
+  });
+};
+
 export const scheduleMatchStatusCheck = () => {
   scheduleFinalizeMatchesReconciler();
   scheduleMatchReminders();
+  scheduleExtrasReminder();
 };

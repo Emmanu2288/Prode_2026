@@ -6,14 +6,14 @@ import BallIcon from "../components/BallIcon";
 // Cierra cuando el primer partido de Cuartos de Final empieza (dinámico — resiste postergaciones)
 const getQFDate = (matches) => {
   const qf = matches
-    .filter((m) => m.league.round === "Quarter-finals")
+    .filter((m) => m.league.round === "Round of 16")
     .sort((a, b) => new Date(a.fixture.date) - new Date(b.fixture.date))[0];
   return qf ? new Date(qf.fixture.date) : null;
 };
 
 const isLocked = (matches) => {
   return matches.some(
-    (m) => m.league.round === "Quarter-finals" && m.fixture.status.short !== "NS"
+    (m) => m.league.round === "Round of 16" && m.fixture.status.short !== "NS"
   );
 };
 
@@ -254,12 +254,21 @@ const Extras = () => {
                 <p className="text-red-300 text-xs font-semibold">🔒 Cerrado</p>
                 <p className="text-red-400 text-xs">Octavos ya empezaron</p>
               </div>
-            ) : (
+            ) : daysLeft !== null ? (
               <div className="bg-white/10 rounded-xl px-4 py-2 text-center">
-                <p className="text-2xl font-bold text-white">{daysLeft}</p>
-                <p className="text-purple-300 text-xs">días para cerrar</p>
+                {daysLeft <= 1 ? (
+                  <>
+                    <p className="text-2xl font-bold text-yellow-300">⚠️</p>
+                    <p className="text-yellow-300 text-xs font-semibold">¡Cierra mañana!</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-white">{daysLeft}</p>
+                    <p className="text-purple-300 text-xs">días para cerrar</p>
+                  </>
+                )}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
@@ -336,7 +345,7 @@ const Extras = () => {
 
         {locked && (
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center text-gray-500 text-sm">
-            🔒 Los pronósticos extras cerraron al inicio de los cuartos de final
+            🔒 Los pronósticos extras cerraron al inicio de los octavos de final
           </div>
         )}
       </form>
