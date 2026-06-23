@@ -14,8 +14,9 @@ import User from "../models/User.js";
  * prediction.mvp optional: player id/string
  * finalMvp optional: player id/string
  */
-export const calculatePointsFinal = (prediction, finalGoals, finalMvp) => {
+export const calculatePointsFinal = (prediction, finalGoals, finalMvp, options = {}) => {
   try {
+    const { statusShort = null, winnerTeam = null } = options;
     const [ph, pa] = String(prediction.predictedScore || "0-0").split("-").map(Number);
     const fh = Number(finalGoals.home ?? finalGoals.homeTeam ?? finalGoals.home);
     const fa = Number(finalGoals.away ?? finalGoals.awayTeam ?? finalGoals.away);
@@ -24,14 +25,27 @@ export const calculatePointsFinal = (prediction, finalGoals, finalMvp) => {
 
     let points = 0;
 
-    // Exact score
-    if (ph === fh && pa === fa) {
-      points += 3;
+    if (statusShort === "PEN") {
+      // PEN: score is tied in regular+ET time; winner decided by penalty shootout
+      const correctScore = ph === fh && pa === fa;
+      let correctWinner = false;
+      if (prediction.advancingTeam && winnerTeam) {
+        const norm = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+        const p = norm(prediction.advancingTeam);
+        const w = norm(winnerTeam);
+        correctWinner = w.includes(p) || p.includes(w);
+      }
+      if (correctScore && correctWinner) points = 3;
+      else if (correctScore || correctWinner) points = 1;
     } else {
-      // Correct winner (or draw)
-      const predDiff = Math.sign(ph - pa);
-      const finalDiff = Math.sign(fh - fa);
-      if (predDiff === finalDiff) points += 1;
+      // FT / AET: score determines winner
+      if (ph === fh && pa === fa) {
+        points += 3;
+      } else {
+        const predDiff = Math.sign(ph - pa);
+        const finalDiff = Math.sign(fh - fa);
+        if (predDiff === finalDiff) points += 1;
+      }
     }
 
     // MVP — comparación tolerante (apellido, parcial, sin tildes, e inicial vs nombre completo)

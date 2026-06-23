@@ -8,7 +8,7 @@ const API_KEY = process.env.FOOTBALL_API_KEY;
 // Crear predicción partido a partido (resultado + MVP)
 export const createPrediction = async (req, res) => {
   try {
-    const { match, predictedScore, mvpPlayer, kickoff } = req.body;
+    const { match, predictedScore, mvpPlayer, kickoff, advancingTeam } = req.body;
     const userId = req.user.id;
 
     const blocked = await Membership.exists({ user: userId, enabled: false });
@@ -62,6 +62,7 @@ export const createPrediction = async (req, res) => {
       // Ya existe → actualizar
       existing.predictedScore = predictedScore;
       if (mvpPlayer !== undefined) existing.mvpPlayer = mvpPlayer;
+      if (advancingTeam !== undefined) existing.advancingTeam = advancingTeam ?? null;
       await existing.save();
       return res.status(200).json(existing);
     }
@@ -72,6 +73,7 @@ export const createPrediction = async (req, res) => {
       matchId: externalMatchId,
       predictedScore,
       mvpPlayer,
+      advancingTeam: advancingTeam ?? null,
     });
 
     return res.status(201).json(prediction);
@@ -85,7 +87,7 @@ export const createPrediction = async (req, res) => {
 export const updatePrediction = async (req, res) => {
   try {
     const { matchId } = req.params;
-    const { predictedScore, mvpPlayer, kickoff } = req.body;
+    const { predictedScore, mvpPlayer, kickoff, advancingTeam } = req.body;
     const userId = req.user.id;
 
     const blocked = await Membership.exists({ user: userId, enabled: false });
@@ -118,6 +120,7 @@ export const updatePrediction = async (req, res) => {
 
     const updateFields = { predictedScore };
     if (mvpPlayer !== undefined) updateFields.mvpPlayer = mvpPlayer;
+    if (advancingTeam !== undefined) updateFields.advancingTeam = advancingTeam ?? null;
 
     const prediction = await Prediction.findOneAndUpdate(
       { user: userId, matchId: String(matchId) },
@@ -176,7 +179,7 @@ export const getExtras = async (req, res) => {
 export const updateExtras = async (req, res) => {
   try {
     const now = new Date();
-    const knockoutStart = new Date("2026-06-27T00:00:00");
+    const knockoutStart = new Date("2026-07-04T00:00:00");
 
     if (now >= knockoutStart) {
       return res.status(400).json({ error: "Ya comenzaron los octavos de final, no se pueden modificar las apuestas globales." });

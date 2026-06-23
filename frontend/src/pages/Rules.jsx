@@ -26,7 +26,7 @@ const Rules = () => {
 
         {/* Sistema de puntos */}
         <div className="bg-white rounded-2xl shadow-xl p-6">
-          <h3 className="text-lg font-bold text-gray-800 mb-3">📋 Sistema de puntos</h3>
+          <h3 className="text-lg font-bold text-gray-800 mb-3">📋 Sistema de puntos — Fase de grupos</h3>
           <ul className="space-y-2.5 text-sm text-gray-600">
             <li className="flex items-start gap-3">
               <span className="shrink-0 bg-green-100 text-green-700 font-bold text-xs px-2 py-1 rounded-lg">3 pts</span>
@@ -41,6 +41,30 @@ const Rules = () => {
               <span>Bonus extra si además acertás la <b>figura (MVP)</b> del partido.</span>
             </li>
           </ul>
+        </div>
+
+        {/* Fase eliminatoria */}
+        <div className="bg-white rounded-2xl shadow-xl p-6">
+          <h3 className="text-lg font-bold text-gray-800 mb-1">⚔️ Sistema de puntos — Fase eliminatoria</h3>
+          <p className="text-xs text-gray-400 mb-4">Aplica a: Octavos, Cuartos, Semifinales, 3er puesto y Final</p>
+          <ul className="space-y-2.5 text-sm text-gray-600">
+            <li className="flex items-start gap-3">
+              <span className="shrink-0 bg-green-100 text-green-700 font-bold text-xs px-2 py-1 rounded-lg">3 pts</span>
+              <span>Acertás el <b>marcador en tiempo reglamentario</b> Y <b>quién avanza</b>.</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="shrink-0 bg-blue-100 text-blue-700 font-bold text-xs px-2 py-1 rounded-lg">1 pt</span>
+              <span>Solo acertás <b>el marcador</b> o solo acertás <b>quién avanza</b> (uno de los dos).</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="shrink-0 bg-yellow-100 text-yellow-700 font-bold text-xs px-2 py-1 rounded-lg">⭐ +2 pts</span>
+              <span>Bonus extra si además acertás la <b>figura (MVP)</b>, igual que en grupos.</span>
+            </li>
+          </ul>
+          <div className="mt-4 bg-gray-50 rounded-xl p-3 text-xs text-gray-500 space-y-1">
+            <p>💡 <b>¿Cómo pronosticar penales?</b> Si pronosticás empate (ej: 1-1), <b>debés elegir</b> quién avanza en penales. Si el marcador ya define un ganador, el equipo que avanza se completa solo — aunque podés cambiarlo.</p>
+            <p>💡 El marcador que cuenta es el del tiempo reglamentario (90 min). El alargue no cambia el pronóstico de goles.</p>
+          </div>
         </div>
 
         {/* Importante */}

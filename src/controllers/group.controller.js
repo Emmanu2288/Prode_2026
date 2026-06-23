@@ -47,6 +47,7 @@ export const getGroupPredictions = async (req, res) => {
         userName:       `${pred.user?.first_name} ${pred.user?.last_name}`,
         predictedScore: pred.predictedScore,
         mvpPlayer:      pred.mvpPlayer,
+        advancingTeam:  pred.advancingTeam ?? null,
         points:         pred.points ?? 0,
       });
     }

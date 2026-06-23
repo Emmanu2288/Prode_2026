@@ -155,9 +155,14 @@ export const processWebhookEvent = async (payload) => {
         }
       }
 
+      // Para PEN: extraer equipo ganador del fixture
+      const winnerTeam = statusShort === "PEN"
+        ? (fixture?.teams?.home?.winner ? fixture.teams.home.name : fixture?.teams?.away?.name ?? null)
+        : null;
+
       for (const pred of preds) {
         try {
-          const points = calculatePointsFinal(pred, finalGoals, finalMvp);
+          const points = calculatePointsFinal(pred, finalGoals, finalMvp, { statusShort, winnerTeam });
           await applyFinalPointsToPrediction(pred, points);
         } catch (e) {
           console.error("Error applying final points to prediction:", e, { predId: pred._id });

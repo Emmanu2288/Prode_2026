@@ -293,6 +293,7 @@ const GroupDetail = () => {
       {/* Tab: Partidos */}
       {tab === "partidos" && (() => {
         const FINISHED = new Set(["FT", "AET", "PEN"]);
+        const KNOCKOUT_ROUNDS = new Set(["Round of 16", "Quarter-finals", "Semi-finals", "3rd Place Final", "Final"]);
 
         const matchesWithPreds = matches.filter((m) => groupPredictions[String(m.fixture.id)]);
 
@@ -340,6 +341,7 @@ const GroupDetail = () => {
               const isSelected = selectedMatch === m.fixture.id;
               const status = m.fixture.status.short;
               const isFinished = FINISHED.has(status);
+              const isKnockoutMatch = KNOCKOUT_ROUNDS.has(m.league.round);
 
               return (
                 <div key={m.fixture.id} className="bg-card rounded-xl border border-gray-100 overflow-hidden">
@@ -383,11 +385,17 @@ const GroupDetail = () => {
                               {p.mvpPlayer && (
                                 <p className="text-xs text-gray-400 truncate sm:hidden">⭐ {p.mvpPlayer}</p>
                               )}
+                              {isKnockoutMatch && p.advancingTeam && (
+                                <p className="text-xs text-blue-500 truncate sm:hidden">🏆 {p.advancingTeam}</p>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-4 text-right flex-shrink-0">
                             {p.mvpPlayer && (
                               <span className="text-xs text-gray-400 hidden sm:block">⭐ {p.mvpPlayer}</span>
+                            )}
+                            {isKnockoutMatch && p.advancingTeam && (
+                              <span className="text-xs text-blue-500 hidden sm:block">🏆 {p.advancingTeam}</span>
                             )}
                             <span className="text-sm font-bold text-green-600">{p.predictedScore}</span>
                             {isFinished && (

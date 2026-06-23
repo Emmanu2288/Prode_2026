@@ -12,15 +12,33 @@ const normalizeName = (s) =>
 const getScoreBreakdown = (pred, matchData) => {
   const status = matchData?.fixture?.status?.short;
   if (!FINISHED.has(status) || !matchData?.goals || !pred?.predictedScore) {
-    return { base: 0, mvpBonus: 0, isExact: false };
+    return { base: 0, mvpBonus: 0, isExact: false, penDetails: null };
   }
   const [ph, pa] = String(pred.predictedScore).split("-").map(Number);
   const fh = Number(matchData.goals.home);
   const fa = Number(matchData.goals.away);
   let base = 0;
   let isExact = false;
-  if (ph === fh && pa === fa) { base = 3; isExact = true; }
-  else if (Math.sign(ph - pa) === Math.sign(fh - fa)) base = 1;
+  let penDetails = null;
+
+  if (status === "PEN") {
+    const correctScore = ph === fh && pa === fa;
+    let correctWinner = false;
+    if (pred.advancingTeam && matchData.teams) {
+      const actualWinner = matchData.teams.home.winner
+        ? matchData.teams.home.name
+        : matchData.teams.away.name;
+      const p = normalizeName(pred.advancingTeam);
+      const a = normalizeName(actualWinner);
+      correctWinner = a.includes(p) || p.includes(a);
+    }
+    if (correctScore && correctWinner) { base = 3; isExact = true; }
+    else if (correctScore || correctWinner) base = 1;
+    penDetails = { correctScore, correctWinner };
+  } else {
+    if (ph === fh && pa === fa) { base = 3; isExact = true; }
+    else if (Math.sign(ph - pa) === Math.sign(fh - fa)) base = 1;
+  }
 
   let mvpBonus = 0;
   const predMvp = pred.mvpPlayer ?? pred.mvp ?? null;
@@ -30,7 +48,7 @@ const getScoreBreakdown = (pred, matchData) => {
     const a = normalizeName(actualMvp);
     if (a.includes(p) || p.includes(a)) mvpBonus = 2;
   }
-  return { base, mvpBonus, isExact };
+  return { base, mvpBonus, isExact, penDetails };
 };
 
 const statusColor = (pred, matchData) => {
@@ -46,11 +64,17 @@ const statusColor = (pred, matchData) => {
 const statusLabel = (pred, matchData) => {
   const status = matchData?.fixture?.status?.short ?? "NS";
   if (!FINISHED.has(status)) return "Pendiente";
-  const { base, mvpBonus, isExact } = getScoreBreakdown(pred, matchData);
+  const { base, mvpBonus, isExact, penDetails } = getScoreBreakdown(pred, matchData);
   if (base === 0 && mvpBonus === 0) return "❌ Sin puntos";
   const parts = [];
-  if (isExact) parts.push("Exacto +3");
-  else if (base === 1) parts.push("Ganador +1");
+  if (status === "PEN" && penDetails) {
+    if (isExact) parts.push("Exacto +3");
+    else if (penDetails.correctScore) parts.push("Score +1");
+    else if (penDetails.correctWinner) parts.push("Avance +1");
+  } else {
+    if (isExact) parts.push("Exacto +3");
+    else if (base === 1) parts.push("Ganador +1");
+  }
   if (mvpBonus > 0) parts.push("🌟 MVP +2");
   return "✅ " + parts.join(" · ");
 };

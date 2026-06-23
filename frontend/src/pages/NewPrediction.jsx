@@ -30,6 +30,7 @@ const NewPrediction = () => {
 
   const [homeGoals, setHomeGoals] = useState(0);
   const [awayGoals, setAwayGoals] = useState(0);
+  const [advancingTeam, setAdvancingTeam] = useState(null);
   const [mvpPlayer, setMvpPlayer] = useState("");
   const [players, setPlayers] = useState(null);
   const [loadingPlayers, setLoadingPlayers] = useState(true);
@@ -47,6 +48,14 @@ const NewPrediction = () => {
   const teams   = match?.teams;
   const league  = match?.league;
   const fixtureId = fixture?.id;
+
+  const KNOCKOUT_ROUNDS = new Set(["Round of 16", "Quarter-finals", "Semi-finals", "3rd Place Final", "Final"]);
+  const isKnockout = KNOCKOUT_ROUNDS.has(league?.round);
+
+  // Equipo que avanza: derivado automáticamente del marcador (si no hay empate)
+  const isDraw = homeGoals === awayGoals;
+  const autoAdvancingTeam = homeGoals > awayGoals ? teams?.home?.name : homeGoals < awayGoals ? teams?.away?.name : null;
+  const effectiveAdvancingTeam = advancingTeam ?? autoAdvancingTeam;
 
   // Determina si el partido ya empezó (por status o por horario de kickoff)
   const isMatchStarted = () =>
@@ -69,6 +78,7 @@ const NewPrediction = () => {
           setHomeGoals(isNaN(h) ? 0 : h);
           setAwayGoals(isNaN(a) ? 0 : a);
           setMvpPlayer(found.mvpPlayer || "");
+          setAdvancingTeam(found.advancingTeam ?? null);
         }
       })
       .catch(() => {})
@@ -110,12 +120,21 @@ const NewPrediction = () => {
       setError("El partido ya comenzó, no se puede cargar ni modificar el pronóstico.");
       return;
     }
+    if (isKnockout && isDraw && !effectiveAdvancingTeam) {
+      setError("Para un empate en tiempo regular, seleccioná quién avanza a los penales.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const score = `${homeGoals}-${awayGoals}`;
-      // El backend hace upsert: crea si no existe, actualiza si ya existe
-      await createPrediction({ match: fixtureId, predictedScore: score, mvpPlayer, kickoff: fixture.date });
+      await createPrediction({
+        match: fixtureId,
+        predictedScore: score,
+        mvpPlayer,
+        kickoff: fixture.date,
+        ...(isKnockout ? { advancingTeam: effectiveAdvancingTeam ?? null } : {}),
+      });
       navigate("/predictions", { state: { success: true } });
     } catch (err) {
       const msg = err.response?.data?.error || "Error al guardar el pronóstico";
@@ -230,6 +249,9 @@ const NewPrediction = () => {
                 <div className="bg-green-50 border border-green-100 rounded-xl py-3">
                   <p className="text-xs text-gray-400 uppercase tracking-widest mb-1">Tu pronóstico quedó</p>
                   <span className="text-green-700 font-bold text-2xl">{homeGoals} — {awayGoals}</span>
+                  {isKnockout && existingPrediction.advancingTeam && (
+                    <p className="text-xs text-green-600 mt-1">🏆 Avanza: {existingPrediction.advancingTeam}</p>
+                  )}
                 </div>
               ) : (
                 <p className="text-gray-400 text-sm">
@@ -262,6 +284,47 @@ const NewPrediction = () => {
                   : "Empate"}
               </p>
             </div>
+
+            {/* ¿Quién avanza? — solo en partidos de eliminación directa */}
+            {isKnockout && (
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  🏆 ¿Quién avanza?{isDraw && <span className="text-red-500 ml-1">*</span>}
+                </p>
+                {isDraw && (
+                  <p className="text-xs text-yellow-600 mb-2">
+                    Empate → elegí quién avanza en penales
+                  </p>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { side: "home", name: teams.home.name, logo: teams.home.logo },
+                    { side: "away", name: teams.away.name, logo: teams.away.logo },
+                  ].map(({ side, name, logo }) => {
+                    const isSelected = effectiveAdvancingTeam === name;
+                    const isAutoSelected = !advancingTeam && autoAdvancingTeam === name;
+                    return (
+                      <button
+                        key={side}
+                        type="button"
+                        onClick={() => setAdvancingTeam(advancingTeam === name ? null : name)}
+                        className={`flex items-center gap-2 border rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                          isSelected
+                            ? "border-green-500 bg-green-50 text-green-700"
+                            : "border-gray-200 hover:border-green-300 text-gray-600"
+                        }`}
+                      >
+                        <img src={logo} alt="" className="w-6 h-6 object-contain" />
+                        <span className="truncate flex-1 text-left">{name}</span>
+                        {isAutoSelected && (
+                          <span className="text-[10px] text-green-500 font-normal">auto</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Superior Player of the Match (MVP) */}
             <div className="mt-5">

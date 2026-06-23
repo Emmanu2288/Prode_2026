@@ -493,6 +493,21 @@ const MvpTab = () => {
 };
 
 // ─── Tab Avisos ───────────────────────────────────────────────────────────────
+const TEMPLATES = [
+  {
+    label: "⚔️ Nuevos pronósticos 16vos",
+    title: "⚔️ ¡Empiezan los 16vos! Nueva forma de pronosticar",
+    message: "En los partidos eliminatorios ahora elegís quién avanza. Si pronosticás empate, tenés que elegir el ganador en penales. ¡Completá tus pronósticos!",
+    url: "/fixtures",
+  },
+  {
+    label: "⏰ Últimas horas para Extras",
+    title: "⏰ ¡Últimas horas para los pronósticos Extras!",
+    message: "Mañana empiezan los octavos. Todavía podés elegir campeón, MVP, goleador y más. ¡No te quedes sin hacerlos!",
+    url: "/extras",
+  },
+];
+
 const AnnounceTab = () => {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
@@ -522,6 +537,23 @@ const AnnounceTab = () => {
           Se envía como notificación push a quienes la tengan activada y aparece en la
           campana 🔔 de todos los que tengan la app abierta.
         </p>
+      </div>
+
+      {/* Plantillas rápidas */}
+      <div>
+        <p className="text-xs font-medium text-gray-600 mb-2">Plantillas rápidas</p>
+        <div className="flex flex-wrap gap-2">
+          {TEMPLATES.map((t) => (
+            <button
+              key={t.label}
+              type="button"
+              onClick={() => { setTitle(t.title); setMessage(t.message); setUrl(t.url); }}
+              className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-3 py-1.5 rounded-lg transition-colors"
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div>

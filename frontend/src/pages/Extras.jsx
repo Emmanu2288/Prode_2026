@@ -4,7 +4,7 @@ import { getExtras, saveExtras } from "../services/prediction.service";
 import BallIcon from "../components/BallIcon";
 
 // Fecha fallback: primer día conocido de octavos — se sobreescribe si la API ya tiene el fixture real
-const R16_FALLBACK = new Date("2026-06-27T14:00:00");
+const R16_FALLBACK = new Date("2026-07-04T14:00:00");
 
 const getR16Date = (matches) => {
   const r16 = matches

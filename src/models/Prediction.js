@@ -10,6 +10,7 @@ const predictionSchema = new Schema({
   matchId: { type: String, index: true, required: false },
   predictedScore: { type: String },
   mvpPlayer: { type: String },
+  advancingTeam: { type: String, default: null },
   points: { type: Number, default: 0 },
   worldChampion: { type: String },
   bestPlayer: { type: String },
