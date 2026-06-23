@@ -3,24 +3,27 @@ import useMatches from "../hooks/useMatches";
 import { getExtras, saveExtras } from "../services/prediction.service";
 import BallIcon from "../components/BallIcon";
 
-// Cierra cuando el primer partido de Cuartos de Final empieza (dinámico — resiste postergaciones)
-const getQFDate = (matches) => {
-  const qf = matches
+// Fecha fallback: primer día conocido de octavos — se sobreescribe si la API ya tiene el fixture real
+const R16_FALLBACK = new Date("2026-06-27T14:00:00");
+
+const getR16Date = (matches) => {
+  const r16 = matches
     .filter((m) => m.league.round === "Round of 16")
     .sort((a, b) => new Date(a.fixture.date) - new Date(b.fixture.date))[0];
-  return qf ? new Date(qf.fixture.date) : null;
+  return r16 ? new Date(r16.fixture.date) : R16_FALLBACK;
 };
 
 const isLocked = (matches) => {
-  return matches.some(
-    (m) => m.league.round === "Round of 16" && m.fixture.status.short !== "NS"
-  );
+  // Si hay partidos de R16 en la API: cerrar cuando el primero ya no sea NS
+  const hasR16 = matches.some((m) => m.league.round === "Round of 16");
+  if (hasR16) return matches.some((m) => m.league.round === "Round of 16" && m.fixture.status.short !== "NS");
+  // Si todavía no están en la API: usar fecha fallback
+  return new Date() >= R16_FALLBACK;
 };
 
 const getDaysToLock = (matches) => {
-  const qfDate = getQFDate(matches);
-  if (!qfDate) return null;
-  const diff = Math.ceil((qfDate - new Date()) / (1000 * 60 * 60 * 24));
+  const r16Date = getR16Date(matches);
+  const diff = Math.ceil((r16Date - new Date()) / (1000 * 60 * 60 * 24));
   return diff > 0 ? diff : 0;
 };
 
@@ -254,7 +257,7 @@ const Extras = () => {
                 <p className="text-red-300 text-xs font-semibold">🔒 Cerrado</p>
                 <p className="text-red-400 text-xs">Octavos ya empezaron</p>
               </div>
-            ) : daysLeft !== null ? (
+            ) : (
               <div className="bg-white/10 rounded-xl px-4 py-2 text-center">
                 {daysLeft <= 1 ? (
                   <>
@@ -268,7 +271,7 @@ const Extras = () => {
                   </>
                 )}
               </div>
-            ) : null}
+            )}
           </div>
         </div>
       </div>
