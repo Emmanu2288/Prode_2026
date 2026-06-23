@@ -3,14 +3,26 @@ import useMatches from "../hooks/useMatches";
 import { getExtras, saveExtras } from "../services/prediction.service";
 import BallIcon from "../components/BallIcon";
 
-const KNOCKOUT_DATE = new Date("2026-06-27T00:00:00");
-
-const getDaysToLock = () => {
-  const diff = Math.ceil((KNOCKOUT_DATE - new Date()) / (1000 * 60 * 60 * 24));
-  return diff > 0 ? diff : 0;
+// Cierra cuando el primer partido de Cuartos de Final empieza (dinámico — resiste postergaciones)
+const getQFDate = (matches) => {
+  const qf = matches
+    .filter((m) => m.league.round === "Quarter-finals")
+    .sort((a, b) => new Date(a.fixture.date) - new Date(b.fixture.date))[0];
+  return qf ? new Date(qf.fixture.date) : null;
 };
 
-const isLocked = () => new Date() >= KNOCKOUT_DATE;
+const isLocked = (matches) => {
+  return matches.some(
+    (m) => m.league.round === "Quarter-finals" && m.fixture.status.short !== "NS"
+  );
+};
+
+const getDaysToLock = (matches) => {
+  const qfDate = getQFDate(matches);
+  if (!qfDate) return null;
+  const diff = Math.ceil((qfDate - new Date()) / (1000 * 60 * 60 * 24));
+  return diff > 0 ? diff : 0;
+};
 
 // Extrae equipos únicos de los fixtures
 const extractTeams = (matches) => {
@@ -157,8 +169,8 @@ const CATEGORIES = [
 const Extras = () => {
   const { matches } = useMatches();
   const teams = extractTeams(matches);
-  const locked = isLocked();
-  const daysLeft = getDaysToLock();
+  const locked = isLocked(matches);
+  const daysLeft = getDaysToLock(matches);
 
   const [form, setForm] = useState({
     worldChampion: "",
@@ -324,7 +336,7 @@ const Extras = () => {
 
         {locked && (
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center text-gray-500 text-sm">
-            🔒 Los pronósticos extras cerraron el 27 de junio cuando empezaron los octavos
+            🔒 Los pronósticos extras cerraron al inicio de los cuartos de final
           </div>
         )}
       </form>

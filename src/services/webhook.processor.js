@@ -91,8 +91,9 @@ export const processWebhookEvent = async (payload) => {
       payload?.status ??
       null;
 
-    // Manejo de partido finalizado (FT)
-    if (statusShort === "FT" || String(statusShort).toLowerCase().includes("full") || String(statusShort).toLowerCase().includes("finished")) {
+    // Manejo de partido finalizado (FT, AET, PEN — incluyendo tiempo extra y penales de knockout)
+    const FINAL_STATUSES = new Set(["FT", "AET", "PEN"]);
+    if (FINAL_STATUSES.has(statusShort) || String(statusShort).toLowerCase().includes("full") || String(statusShort).toLowerCase().includes("finished")) {
       console.log("processWebhookEvent: final match detected for matchId:", matchId, "status:", statusShort);
 
       const alreadyScored = await ProcessedFixture.findOne({ matchId, type: "scored" });
