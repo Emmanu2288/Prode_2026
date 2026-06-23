@@ -189,7 +189,7 @@ const GroupTable = ({ group, teams }) => (
       </table>
     </div>
     <p className="text-xs text-gray-400 px-4 py-2 border-t border-gray-50">
-      🟢 Clasifican directo los 2 primeros · los mejores terceros completan los octavos
+      🟢 Clasifican directo los 2 primeros · los mejores terceros completan los dieciseisavos
     </p>
   </section>
 );

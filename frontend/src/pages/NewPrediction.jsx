@@ -49,7 +49,7 @@ const NewPrediction = () => {
   const league  = match?.league;
   const fixtureId = fixture?.id;
 
-  const KNOCKOUT_ROUNDS = new Set(["Round of 16", "Quarter-finals", "Semi-finals", "3rd Place Final", "Final"]);
+  const KNOCKOUT_ROUNDS = new Set(["Round of 32", "Round of 16", "Quarter-finals", "Semi-finals", "3rd Place Final", "Final"]);
   const isKnockout = KNOCKOUT_ROUNDS.has(league?.round);
 
   // Equipo que avanza: derivado automáticamente del marcador (si no hay empate)

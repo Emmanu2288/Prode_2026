@@ -293,7 +293,7 @@ const GroupDetail = () => {
       {/* Tab: Partidos */}
       {tab === "partidos" && (() => {
         const FINISHED = new Set(["FT", "AET", "PEN"]);
-        const KNOCKOUT_ROUNDS = new Set(["Round of 16", "Quarter-finals", "Semi-finals", "3rd Place Final", "Final"]);
+        const KNOCKOUT_ROUNDS = new Set(["Round of 32", "Round of 16", "Quarter-finals", "Semi-finals", "3rd Place Final", "Final"]);
 
         const matchesWithPreds = matches.filter((m) => groupPredictions[String(m.fixture.id)]);
 

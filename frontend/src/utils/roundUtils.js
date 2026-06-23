@@ -2,6 +2,7 @@ export const formatRound = (round) => {
   if (!round) return round;
   return round
     .replace("Group Stage - ", "Fase de grupos · Fecha ")
+    .replace("Round of 32", "Dieciseisavos de final")
     .replace("Round of 16", "Octavos de final")
     .replace("Quarter-finals", "Cuartos de final")
     .replace("Semi-finals", "Semifinales")

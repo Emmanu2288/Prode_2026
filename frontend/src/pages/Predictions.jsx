@@ -82,7 +82,7 @@ const statusLabel = (pred, matchData) => {
 const formatRoundShort = (r) => {
   if (!r) return "";
   if (r.startsWith("Group Stage - ")) return "Fecha " + r.replace("Group Stage - ", "");
-  const map = { "Round of 16": "Octavos", "Quarter-finals": "Cuartos", "Semi-finals": "Semis", "3rd Place Final": "3er puesto", "Third Place Final": "3er puesto", Final: "Final" };
+  const map = { "Round of 32": "16vos", "Round of 16": "Octavos", "Quarter-finals": "Cuartos", "Semi-finals": "Semis", "3rd Place Final": "3er puesto", "Third Place Final": "3er puesto", Final: "Final" };
   return map[r] || r;
 };
 

@@ -3,7 +3,9 @@ import useMatches from "../hooks/useMatches";
 import { getExtras, saveExtras } from "../services/prediction.service";
 import BallIcon from "../components/BallIcon";
 
-// Fecha fallback: primer día conocido de octavos — se sobreescribe si la API ya tiene el fixture real
+// Fecha fallback: primer día conocido de octavos — se cierra ahí (no en dieciseisavos)
+// porque con 32 equipos en juego predecir campeón/goleador/MVP es mucho más difícil.
+// Se sobreescribe si la API ya tiene el fixture real.
 const R16_FALLBACK = new Date("2026-07-04T14:00:00");
 
 const getR16Date = (matches) => {
@@ -14,7 +16,7 @@ const getR16Date = (matches) => {
 };
 
 const isLocked = (matches) => {
-  // Si hay partidos de R16 en la API: cerrar cuando el primero ya no sea NS
+  // Si hay partidos de octavos en la API: cerrar cuando el primero ya no sea NS
   const hasR16 = matches.some((m) => m.league.round === "Round of 16");
   if (hasR16) return matches.some((m) => m.league.round === "Round of 16" && m.fixture.status.short !== "NS");
   // Si todavía no están en la API: usar fecha fallback
