@@ -46,7 +46,7 @@ const Rules = () => {
         {/* Fase eliminatoria */}
         <div className="bg-white rounded-2xl shadow-xl p-6">
           <h3 className="text-lg font-bold text-gray-800 mb-1">⚔️ Sistema de puntos — Fase eliminatoria</h3>
-          <p className="text-xs text-gray-400 mb-4">Aplica a: Octavos, Cuartos, Semifinales, 3er puesto y Final</p>
+          <p className="text-xs text-gray-400 mb-4">Aplica a: 16vos, Cuartos, Semifinales, 3er puesto y Final</p>
           <ul className="space-y-2.5 text-sm text-gray-600">
             <li className="flex items-start gap-3">
               <span className="shrink-0 bg-green-100 text-green-700 font-bold text-xs px-2 py-1 rounded-lg">3 pts</span>
