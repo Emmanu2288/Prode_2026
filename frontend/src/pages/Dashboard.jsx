@@ -93,7 +93,7 @@ const Dashboard = () => {
               rankingMap[g._id] = {
                 position: pos >= 0 ? pos + 1 : null,
                 total: lb.data?.length || 0,
-                points: lb.data?.[pos]?.totalPoints ?? 0,
+                points: lb.data?.[pos]?.points ?? 0,
               };
             } catch { rankingMap[g._id] = null; }
           })
