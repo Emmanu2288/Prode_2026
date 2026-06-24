@@ -381,15 +381,23 @@ const GroupDetail = () => {
                               {p.userName?.[0]}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-sm text-gray-700 truncate">{p.userName}</p>
-                              {p.mvpPlayer && (
+                              <p className="text-sm text-gray-700 truncate">
+                                {p.userName}
+                                {(p.userId === user?._id || p.userId === user?.id) && (
+                                  <span className="text-green-600 text-xs ml-1">(vos)</span>
+                                )}
+                              </p>
+                              {!p.hidden && p.mvpPlayer && (
                                 <p className="text-xs text-gray-400 truncate sm:hidden">⭐ {p.mvpPlayer}</p>
                               )}
-                              {isKnockoutMatch && p.advancingTeam && (
+                              {!p.hidden && isKnockoutMatch && p.advancingTeam && (
                                 <p className="text-xs text-blue-500 truncate sm:hidden">🏆 {p.advancingTeam}</p>
                               )}
                             </div>
                           </div>
+                          {p.hidden ? (
+                            <span className="text-xs text-gray-400 italic flex-shrink-0">🔒 Oculto hasta que arranque</span>
+                          ) : (
                           <div className="flex items-center gap-4 text-right flex-shrink-0">
                             {p.mvpPlayer && (
                               <span className="text-xs text-gray-400 hidden sm:block">⭐ {p.mvpPlayer}</span>
@@ -408,6 +416,7 @@ const GroupDetail = () => {
                               </span>
                             )}
                           </div>
+                          )}
                         </div>
                       ))}
                     </div>

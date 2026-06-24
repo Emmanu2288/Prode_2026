@@ -4,6 +4,7 @@ import Prediction from "../models/Prediction.js";
 import Payment from "../models/Payment.js";
 import User from "../models/User.js";
 import { inviteToGroup as inviteToGroupController } from "./invitation.controller.js";
+import { getWorldCup2026Matches } from "../services/match.service.js";
 
 // Eliminar grupo (solo owner)
 export const deleteGroup = async (req, res) => {
@@ -23,10 +24,14 @@ export const deleteGroup = async (req, res) => {
   }
 };
 
-// Predicciones de todos los miembros del grupo agrupadas por matchId
+// Predicciones de todos los miembros del grupo agrupadas por matchId.
+// Antes de que arranque cada partido, solo se ven los datos del propio usuario:
+// los demás aparecen en la lista (para mostrar quién ya pronosticó) pero con
+// los valores ocultos, para que nadie pueda copiarse antes del kickoff.
 export const getGroupPredictions = async (req, res) => {
   try {
     const { groupId } = req.params;
+    const currentUserId = String(req.user.id);
     const memberships = await Membership.find({ group: groupId }).lean();
     const userIds = memberships.map((m) => m.user);
 
@@ -38,17 +43,34 @@ export const getGroupPredictions = async (req, res) => {
       .populate("user", "first_name last_name")
       .lean();
 
+    // Partidos que ya arrancaron (status !== "NS"): ahí se puede ver todo.
+    // Si la API falla, por seguridad se asume que ningún partido arrancó.
+    let startedMatchIds = new Set();
+    try {
+      const matches = await getWorldCup2026Matches();
+      startedMatchIds = new Set(
+        matches
+          .filter((m) => m.fixture.status.short !== "NS")
+          .map((m) => String(m.fixture.id))
+      );
+    } catch (err) {
+      console.warn("getGroupPredictions: no se pudo verificar estado de partidos:", err.message);
+    }
+
     // Agrupar por matchId
     const byMatch = {};
     for (const pred of predictions) {
+      const visible = startedMatchIds.has(String(pred.matchId)) || String(pred.user?._id) === currentUserId;
+
       if (!byMatch[pred.matchId]) byMatch[pred.matchId] = [];
       byMatch[pred.matchId].push({
         userId:         pred.user?._id,
         userName:       `${pred.user?.first_name} ${pred.user?.last_name}`,
-        predictedScore: pred.predictedScore,
-        mvpPlayer:      pred.mvpPlayer,
-        advancingTeam:  pred.advancingTeam ?? null,
-        points:         pred.points ?? 0,
+        predictedScore: visible ? pred.predictedScore : null,
+        mvpPlayer:      visible ? pred.mvpPlayer : null,
+        advancingTeam:  visible ? (pred.advancingTeam ?? null) : null,
+        points:         visible ? (pred.points ?? 0) : null,
+        hidden:         !visible,
       });
     }
 
