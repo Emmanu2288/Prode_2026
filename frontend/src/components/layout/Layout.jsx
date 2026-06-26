@@ -3,19 +3,19 @@ import { Link, Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import useSocket from "../../hooks/useSocket";
+import useMatches from "../../hooks/useMatches";
 import usePushNotifications, { subscribeToPush } from "../../hooks/usePushNotifications";
 import { getExtras } from "../../services/prediction.service";
-
-const KNOCKOUT_DATE = new Date("2026-06-27T00:00:00");
-const REMINDER_DATE = new Date("2026-06-26T00:00:00");
+import { isExtrasLocked, getDaysToExtrasLock } from "../../utils/extrasLock";
 
 const ExtrasReminder = () => {
   const [show, setShow] = useState(false);
+  const { matches } = useMatches();
 
   useEffect(() => {
-    const now = new Date();
-    // Mostrar solo el día 26 de junio (1 día antes del cierre)
-    if (now < REMINDER_DATE || now >= KNOCKOUT_DATE) return;
+    if (!matches.length) return;
+    // Mostrar solo si falta 1 día o menos y todavía no cerraron
+    if (isExtrasLocked(matches) || getDaysToExtrasLock(matches) > 1) return;
 
     // Verificar si tiene extras incompletos
     getExtras().then((res) => {
@@ -23,13 +23,13 @@ const ExtrasReminder = () => {
       const filled = [e.worldChampion, e.bestPlayer, e.topScorer, e.bestGoalkeeper, e.fairPlayTeam, e.bestYoungPlayer].filter(Boolean).length;
       if (filled < 6) setShow(true);
     }).catch(() => {});
-  }, []);
+  }, [matches]);
 
   if (!show) return null;
 
   return (
     <div className="bg-yellow-400 text-yellow-900 px-6 py-2.5 flex items-center justify-between text-sm font-medium">
-      <span>⚠️ ¡Mañana cierra Extras! Completá tus pronósticos de campeón, goleador y más antes de las 00:00.</span>
+      <span>⚠️ ¡Últimas horas para los pronósticos Extras! Completá campeón, goleador y más antes de que arranquen los octavos.</span>
       <div className="flex items-center gap-3">
         <Link to="/extras" className="underline font-bold hover:text-yellow-700">
           Ir a Extras →

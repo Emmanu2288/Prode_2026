@@ -2,32 +2,7 @@ import { useEffect, useState } from "react";
 import useMatches from "../hooks/useMatches";
 import { getExtras, saveExtras } from "../services/prediction.service";
 import BallIcon from "../components/BallIcon";
-
-// Fecha fallback: primer día conocido de octavos — se cierra ahí (no en dieciseisavos)
-// porque con 32 equipos en juego predecir campeón/goleador/MVP es mucho más difícil.
-// Se sobreescribe si la API ya tiene el fixture real.
-const R16_FALLBACK = new Date("2026-07-04T14:00:00");
-
-const getR16Date = (matches) => {
-  const r16 = matches
-    .filter((m) => m.league.round === "Round of 16")
-    .sort((a, b) => new Date(a.fixture.date) - new Date(b.fixture.date))[0];
-  return r16 ? new Date(r16.fixture.date) : R16_FALLBACK;
-};
-
-const isLocked = (matches) => {
-  // Si hay partidos de octavos en la API: cerrar cuando el primero ya no sea NS
-  const hasR16 = matches.some((m) => m.league.round === "Round of 16");
-  if (hasR16) return matches.some((m) => m.league.round === "Round of 16" && m.fixture.status.short !== "NS");
-  // Si todavía no están en la API: usar fecha fallback
-  return new Date() >= R16_FALLBACK;
-};
-
-const getDaysToLock = (matches) => {
-  const r16Date = getR16Date(matches);
-  const diff = Math.ceil((r16Date - new Date()) / (1000 * 60 * 60 * 24));
-  return diff > 0 ? diff : 0;
-};
+import { isExtrasLocked as isLocked, getDaysToExtrasLock as getDaysToLock } from "../utils/extrasLock";
 
 // Extrae equipos únicos de los fixtures
 const extractTeams = (matches) => {

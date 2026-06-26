@@ -98,7 +98,8 @@ const FairPlayTable = ({ teams, loading }) => {
         🤝 Fair Play — Tarjetas por selección
       </h2>
       <p className="text-xs text-gray-400 mb-3">
-        Ordenado de menor a mayor cantidad de tarjetas. Te ayuda a elegir tu pronóstico de Fair Play en Extras.
+        Ordenado de menor a mayor cantidad de tarjetas. Solo selecciones que clasificaron a la fase eliminatoria
+        (las eliminadas en fase de grupos no son candidatas al premio). Te ayuda a elegir tu pronóstico de Fair Play en Extras.
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm" style={{ minWidth: "300px" }}>
@@ -194,6 +195,71 @@ const GroupTable = ({ group, teams }) => (
   </section>
 );
 
+const BestThirdsTable = ({ teams }) => {
+  if (!teams?.length) return null;
+  return (
+    <section className="bg-card rounded-xl border border-gray-100 overflow-hidden">
+      <h2 className="text-sm font-semibold text-gray-700 px-4 py-3 border-b border-gray-100">
+        Mejores terceros
+      </h2>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm" style={{ minWidth: "540px" }}>
+          <thead>
+            <tr className="text-xs text-gray-400 uppercase">
+              <th className="text-left px-3 py-2">#</th>
+              <th className="text-left px-3 py-2">Equipo</th>
+              <th className="text-left px-3 py-2">Grupo</th>
+              <th className="px-2 py-2">PJ</th>
+              <th className="px-2 py-2">G</th>
+              <th className="px-2 py-2">E</th>
+              <th className="px-2 py-2">P</th>
+              <th className="px-2 py-2">GF</th>
+              <th className="px-2 py-2">GC</th>
+              <th className="px-2 py-2">DG</th>
+              <th className="px-2 py-2">Pts</th>
+              <th className="px-3 py-2">Forma</th>
+            </tr>
+          </thead>
+          <tbody>
+            {teams.map((t, i) => (
+              <tr key={t.team.id} className={`border-t border-gray-50 ${i < 8 ? "bg-green-50/60" : ""}`}>
+                <td className="px-3 py-2 font-semibold text-gray-600">{i + 1}</td>
+                <td className="px-3 py-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <img src={t.team.logo} alt="" className="w-5 h-5 object-contain flex-shrink-0" />
+                    <span className="font-medium text-gray-800 truncate">{t.team.name}</span>
+                  </div>
+                </td>
+                <td className="px-3 py-2 text-gray-500 text-xs">{(t.group || "").replace("Group Stage - ", "")}</td>
+                <td className="px-2 py-2 text-center text-gray-600">{t.all?.played ?? 0}</td>
+                <td className="px-2 py-2 text-center text-gray-600">{t.all?.win ?? 0}</td>
+                <td className="px-2 py-2 text-center text-gray-600">{t.all?.draw ?? 0}</td>
+                <td className="px-2 py-2 text-center text-gray-600">{t.all?.lose ?? 0}</td>
+                <td className="px-2 py-2 text-center text-gray-600">{t.all?.goals?.for ?? 0}</td>
+                <td className="px-2 py-2 text-center text-gray-600">{t.all?.goals?.against ?? 0}</td>
+                <td className="px-2 py-2 text-center text-gray-600">{t.goalsDiff ?? 0}</td>
+                <td className="px-2 py-2 text-center font-bold text-gray-800">{t.points ?? 0}</td>
+                <td className="px-3 py-2">
+                  <div className="flex gap-0.5 justify-center">
+                    {(t.form || "").split("").map((r, idx) => (
+                      <span key={idx} className={`w-4 h-4 rounded-full text-xs font-bold flex items-center justify-center ${formBadgeColor(r)}`}>
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-gray-400 px-4 py-2 border-t border-gray-50">
+        🟢 Pasan los mejores 8
+      </p>
+    </section>
+  );
+};
+
 const Standings = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -251,7 +317,7 @@ const Standings = () => {
     );
   }
 
-  const { standings = [], topScorers = [] } = data || {};
+  const { standings = [], topScorers = [], bestThirds = [] } = data || {};
 
   return (
     <div className="space-y-5">
@@ -297,6 +363,8 @@ const Standings = () => {
           ))}
         </div>
       )}
+
+      <BestThirdsTable teams={bestThirds} />
     </div>
   );
 };

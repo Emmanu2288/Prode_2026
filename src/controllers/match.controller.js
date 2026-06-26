@@ -9,6 +9,7 @@ const API_KEY = process.env.FOOTBALL_API_KEY;
 const SEASON = process.env.API_SEASON || 2026;
 
 const FINISHED_STATUSES = new Set(["FT", "AET", "PEN"]);
+const KNOCKOUT_ROUNDS = new Set(["Round of 32", "Round of 16", "Quarter-finals", "Semi-finals", "3rd Place Final", "Final"]);
 
 // Controlador para obtener partidos desde la API externa
 export const getMatches = async (req, res) => {
@@ -246,7 +247,25 @@ export const getStandings = async (req, res) => {
       assists: entry.statistics?.[0]?.goals?.assists ?? 0,
     }));
 
-    const data = { standings, topScorers };
+    // La API devuelve, además de los 12 grupos reales (A-L), un grupo sintético
+    // "Group Stage" con el ranking oficial de los 12 terceros entre sí (rank 1-12,
+    // ya con los criterios de desempate de FIFA aplicados) — hay que separarlo del
+    // resto, sino se renderiza como si fuera un grupo más de 12 equipos.
+    const thirdsGroup = standings.find((g) => g[0]?.group === "Group Stage" && g.length > 4);
+    const realGroups = standings.filter((g) => g !== thirdsGroup);
+
+    const bestThirds = thirdsGroup
+      ? [...thirdsGroup].sort((a, b) => a.rank - b.rank)
+      : realGroups
+          .map((group) => group.find((t) => t.rank === 3))
+          .filter(Boolean)
+          .sort((a, b) => {
+            if (b.points !== a.points) return b.points - a.points;
+            if (b.goalsDiff !== a.goalsDiff) return b.goalsDiff - a.goalsDiff;
+            return (b.all?.goals?.for ?? 0) - (a.all?.goals?.for ?? 0);
+          });
+
+    const data = { standings: realGroups, topScorers, bestThirds };
     standingsCache = { data, ts: Date.now() };
     return res.json(data);
   } catch (err) {
@@ -389,8 +408,33 @@ export const getFairPlayStats = async (req, res) => {
       }));
     }
 
+    // El trofeo Fair Play del Mundial solo lo pueden ganar selecciones que
+    // clasificaron a la fase eliminatoria (regla histórica: "only teams that
+    // qualify for the 2nd round are considered"). El conteo de tarjetas no se
+    // resetea —sigue sumando desde la fase de grupos— pero las eliminadas en
+    // grupos dejan de ser candidatas, aunque las que clasificaron y luego
+    // perdieron en cualquier ronda eliminatoria siguen siendo válidas.
+    let eligibleIds = null;
+    try {
+      const matches = await getWorldCup2026Matches();
+      const knockoutMatches = matches.filter((m) => KNOCKOUT_ROUNDS.has(m.league.round));
+      if (knockoutMatches.length > 0) {
+        eligibleIds = new Set();
+        knockoutMatches.forEach((m) => {
+          eligibleIds.add(m.teams.home.id);
+          eligibleIds.add(m.teams.away.id);
+        });
+      }
+    } catch (e) {
+      console.warn("getFairPlayStats: no se pudo verificar clasificados a la fase eliminatoria:", e.message);
+    }
+
+    const eligible = eligibleIds
+      ? Object.values(teamCards).filter((t) => eligibleIds.has(t.id))
+      : Object.values(teamCards);
+
     // Ordenar por menor "peso" de tarjetas (rojas pesan 3x más que amarillas)
-    const sorted = Object.values(teamCards).sort(
+    const sorted = eligible.sort(
       (a, b) => (a.yellow + a.red * 3) - (b.yellow + b.red * 3)
     );
 
