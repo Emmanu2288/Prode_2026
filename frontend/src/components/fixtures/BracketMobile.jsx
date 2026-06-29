@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getSlotLabel } from "../../utils/bracketUtils";
 
 const ROUNDS = [
@@ -10,7 +11,23 @@ const ROUNDS = [
 ];
 const FINISHED = new Set(["FT", "AET", "PEN"]);
 
-const MatchupCard = ({ m }) => {
+const TeamRow = ({ label, isWinner, goals }) => (
+  <div className="flex items-center justify-between gap-2">
+    <div className="flex items-center gap-2 min-w-0 flex-1">
+      {!label.isPrediction && label.logo && (
+        <img src={label.logo} alt="" className="w-5 h-5 object-contain flex-shrink-0" />
+      )}
+      <span className={`text-sm truncate ${label.isPrediction ? "italic text-gray-400" : isWinner ? "font-semibold text-gray-800" : "text-gray-400"}`}>
+        {label.text}
+      </span>
+    </div>
+    {goals != null && (
+      <span className="text-sm font-bold text-gray-700 flex-shrink-0">{goals}</span>
+    )}
+  </div>
+);
+
+const MatchupCard = ({ m, onClick }) => {
   const labelA = getSlotLabel(m.teamA, m.leftSource);
   const labelB = getSlotLabel(m.teamB, m.rightSource);
   const isFinished = m.fixture && FINISHED.has(m.fixture.fixture.status.short);
@@ -24,22 +41,13 @@ const MatchupCard = ({ m }) => {
   }
 
   return (
-    <div className="bg-card rounded-xl border border-gray-100 px-4 py-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className={`text-sm truncate flex-1 ${labelA.isPrediction ? "italic text-gray-400" : m.winner === labelA.text ? "font-semibold text-gray-800" : "text-gray-400"}`}>
-          {labelA.text}
-        </span>
-        {isFinished && (
-          <span className="text-sm font-bold text-gray-700 flex-shrink-0">{m.fixture.goals.home}</span>
-        )}
-      </div>
-      <div className="flex items-center justify-between gap-2 mt-1">
-        <span className={`text-sm truncate flex-1 ${labelB.isPrediction ? "italic text-gray-400" : m.winner === labelB.text ? "font-semibold text-gray-800" : "text-gray-400"}`}>
-          {labelB.text}
-        </span>
-        {isFinished && (
-          <span className="text-sm font-bold text-gray-700 flex-shrink-0">{m.fixture.goals.away}</span>
-        )}
+    <div
+      onClick={onClick}
+      className={`bg-card rounded-xl border border-gray-100 px-4 py-3 ${onClick ? "cursor-pointer hover:border-green-300 transition-colors" : ""}`}
+    >
+      <TeamRow label={labelA} isWinner={m.winner === labelA.text} goals={isFinished ? m.fixture.goals.home : null} />
+      <div className="mt-1">
+        <TeamRow label={labelB} isWinner={m.winner === labelB.text} goals={isFinished ? m.fixture.goals.away : null} />
       </div>
       {m.fixture && !isFinished && (
         <p className="text-xs text-gray-400 mt-1.5">
@@ -54,6 +62,7 @@ const MatchupCard = ({ m }) => {
 
 const BracketMobile = ({ rounds }) => {
   const [selected, setSelected] = useState("Round of 32");
+  const navigate = useNavigate();
   const matchups = rounds[selected] || [];
 
   return (
@@ -75,7 +84,7 @@ const BracketMobile = ({ rounds }) => {
       </div>
       <div className="space-y-2">
         {matchups.map((m, i) => (
-          <MatchupCard key={i} m={m} />
+          <MatchupCard key={i} m={m} onClick={m.fixture ? () => navigate(`/fixtures/${m.fixture.fixture.id}`) : undefined} />
         ))}
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { getSlotLabel } from "../../utils/bracketUtils";
 
 const X = {
@@ -9,8 +10,9 @@ const Y32 = [40, 102, 164, 226, 288, 350, 412, 474];
 const Y16 = [71, 195, 319, 443];
 const YQF = [133, 381];
 const YSF = 257;
+const LOGO = 14;
 
-const real = (team) => ({ text: team.name, isPrediction: false });
+const real = (team) => ({ text: team.name, isPrediction: false, logo: team.logo });
 
 const fitText = (text, maxWidthPx, fontSizePx) => {
   const maxChars = Math.max(1, Math.floor(maxWidthPx / (fontSizePx * 0.55)));
@@ -26,24 +28,31 @@ const connector = (xChild, yA, yB, xMid, yParent, xParent) => (
 
 const MatchBoxRow = ({ x, w, y, side, label, isWinner, isLoser, score }) => {
   const fontSize = label.isPrediction ? 9 : 12.5;
-  const availWidth = score != null ? w - 28 : w - 16;
+  const hasLogo = !label.isPrediction && label.logo;
+  const outerGap = hasLogo ? 3 + LOGO + 3 : 8;
+  const availWidth = (score != null ? w - 20 : w - 8) - outerGap;
   const display = fitText(label.text, availWidth, fontSize);
   const anchor = side === "right" ? "end" : "start";
-  const tx = side === "right" ? x + w - 8 : x + 8;
+  const tx = side === "right" ? x + w - 8 - outerGap : x + 8 + outerGap;
   const color = isLoser ? "var(--text-muted)" : "var(--text-primary)";
   const weight = isWinner ? "500" : "400";
   return (
-    <text x={tx} y={y} textAnchor={anchor} fontSize={fontSize} fontStyle={label.isPrediction ? "italic" : "normal"} fill={color} fontWeight={weight}>
-      {display !== label.text && <title>{label.text}</title>}
-      {display}
-      {score != null && (
-        <tspan x={side === "right" ? x + 8 : x + w - 8} textAnchor={side === "right" ? "start" : "end"} fontStyle="normal">{score}</tspan>
+    <>
+      {hasLogo && (
+        <image href={label.logo} x={side === "right" ? x + w - 3 - LOGO : x + 3} y={y - 10} width={LOGO} height={LOGO} />
       )}
-    </text>
+      <text x={tx} y={y} textAnchor={anchor} fontSize={fontSize} fontStyle={label.isPrediction ? "italic" : "normal"} fill={color} fontWeight={weight}>
+        {display !== label.text && <title>{label.text}</title>}
+        {display}
+        {score != null && (
+          <tspan x={side === "right" ? x + 8 : x + w - 8} textAnchor={side === "right" ? "start" : "end"} fontStyle="normal">{score}</tspan>
+        )}
+      </text>
+    </>
   );
 };
 
-const MatchBox = ({ x, y, w, side, labelA, labelB, winnerName, score, empty }) => {
+const MatchBox = ({ x, y, w, side, labelA, labelB, winnerName, score, empty, onClick }) => {
   const h = 46;
   if (empty) {
     return (
@@ -54,7 +63,7 @@ const MatchBox = ({ x, y, w, side, labelA, labelB, winnerName, score, empty }) =
     );
   }
   return (
-    <g>
+    <g onClick={onClick} style={onClick ? { cursor: "pointer" } : undefined}>
       <rect x={x} y={y - 23} width={w} height={h} rx="6" fill="var(--bg-card)" stroke="var(--border)" />
       <line x1={x} y1={y} x2={x + w} y2={y} stroke="var(--border)" />
       <MatchBoxRow x={x} w={w} y={y - 7} side={side} label={labelA} isWinner={winnerName === labelA.text} isLoser={!!winnerName && winnerName !== labelA.text} score={score ? score[0] : null} />
@@ -63,7 +72,7 @@ const MatchBox = ({ x, y, w, side, labelA, labelB, winnerName, score, empty }) =
   );
 };
 
-const renderSide = (rounds, side) => {
+const renderSide = (rounds, side, navigate) => {
   const isLeft = side === "left";
   const r32 = isLeft ? rounds["Round of 32"].slice(0, 8) : rounds["Round of 32"].slice(8, 16);
   const r16 = isLeft ? rounds["Round of 16"].slice(0, 4) : rounds["Round of 16"].slice(4, 8);
@@ -76,19 +85,20 @@ const renderSide = (rounds, side) => {
   const xSf = isLeft ? X.sfL : X.sfR;
 
   const finishedScore = (m) => (m.fixture && ["FT", "AET", "PEN"].includes(m.fixture.fixture.status.short) ? [m.fixture.goals.home, m.fixture.goals.away] : null);
+  const goTo = (m) => (m.fixture ? () => navigate(`/fixtures/${m.fixture.fixture.id}`) : undefined);
 
   return (
     <g>
       {r32.map((m, i) => (
         <MatchBox key={`r32-${side}-${i}`} x={xR32} y={Y32[i]} w={W.r32} side={side}
-          labelA={real(m.teamA)} labelB={real(m.teamB)} winnerName={m.winner} score={finishedScore(m)} />
+          labelA={real(m.teamA)} labelB={real(m.teamB)} winnerName={m.winner} score={finishedScore(m)} onClick={goTo(m)} />
       ))}
       {r16.map((m, i) => {
         const labelA = getSlotLabel(m.teamA, m.leftSource);
         const labelB = getSlotLabel(m.teamB, m.rightSource);
         return labelA && labelB ? (
           <MatchBox key={`r16-${side}-${i}`} x={xR16} y={Y16[i]} w={W.r16} side={side}
-            labelA={labelA} labelB={labelB} winnerName={m.winner} score={finishedScore(m)} />
+            labelA={labelA} labelB={labelB} winnerName={m.winner} score={finishedScore(m)} onClick={goTo(m)} />
         ) : (
           <MatchBox key={`r16-${side}-${i}`} x={xR16} y={Y16[i]} w={W.r16} side={side} empty />
         );
@@ -98,7 +108,7 @@ const renderSide = (rounds, side) => {
         const labelB = getSlotLabel(m.teamB, m.rightSource);
         return labelA && labelB ? (
           <MatchBox key={`qf-${side}-${i}`} x={xQf} y={YQF[i]} w={W.qf} side={side}
-            labelA={labelA} labelB={labelB} winnerName={m.winner} score={finishedScore(m)} />
+            labelA={labelA} labelB={labelB} winnerName={m.winner} score={finishedScore(m)} onClick={goTo(m)} />
         ) : (
           <MatchBox key={`qf-${side}-${i}`} x={xQf} y={YQF[i]} w={W.qf} side={side} empty />
         );
@@ -108,7 +118,7 @@ const renderSide = (rounds, side) => {
         const labelB = getSlotLabel(sf.teamB, sf.rightSource);
         return labelA && labelB ? (
           <MatchBox x={xSf} y={YSF} w={W.sf} side={side}
-            labelA={labelA} labelB={labelB} winnerName={sf.winner} score={finishedScore(sf)} />
+            labelA={labelA} labelB={labelB} winnerName={sf.winner} score={finishedScore(sf)} onClick={goTo(sf)} />
         ) : (
           <MatchBox x={xSf} y={YSF} w={W.sf} side={side} empty />
         );
@@ -142,11 +152,13 @@ const renderSide = (rounds, side) => {
 };
 
 const BracketDesktop = ({ rounds }) => {
+  const navigate = useNavigate();
   const finalM = rounds["Final"][0];
   const finalLabelA = getSlotLabel(finalM.teamA, finalM.leftSource);
   const finalLabelB = getSlotLabel(finalM.teamB, finalM.rightSource);
   const finalScore = finalM.fixture && ["FT", "AET", "PEN"].includes(finalM.fixture.fixture.status.short)
     ? [finalM.fixture.goals.home, finalM.fixture.goals.away] : null;
+  const finalOnClick = finalM.fixture ? () => navigate(`/fixtures/${finalM.fixture.fixture.id}`) : undefined;
 
   return (
     <svg width="100%" viewBox="0 0 1460 520" role="img">
@@ -161,11 +173,11 @@ const BracketDesktop = ({ rounds }) => {
       <text x="1182" y="10" textAnchor="middle" fontSize="12" fill="var(--text-muted)">8vos</text>
       <text x="1367" y="10" textAnchor="middle" fontSize="12" fill="var(--text-muted)">16vos</text>
 
-      {renderSide(rounds, "left")}
-      {renderSide(rounds, "right")}
+      {renderSide(rounds, "left", navigate)}
+      {renderSide(rounds, "right", navigate)}
 
       {finalLabelA && finalLabelB ? (
-        <MatchBox x={X.final} y={YSF} w={W.final} side="left" labelA={finalLabelA} labelB={finalLabelB} winnerName={finalM.winner} score={finalScore} />
+        <MatchBox x={X.final} y={YSF} w={W.final} side="left" labelA={finalLabelA} labelB={finalLabelB} winnerName={finalM.winner} score={finalScore} onClick={finalOnClick} />
       ) : (
         <MatchBox x={X.final} y={YSF} w={W.final} side="left" empty />
       )}

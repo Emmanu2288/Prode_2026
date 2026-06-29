@@ -99,9 +99,9 @@ export const buildBracket = (matches) => {
 // partido que lo define ya tiene los 2 equipos, o null (mostrar "?") si ese
 // partido en sí todavía depende de otro resultado.
 export const getSlotLabel = (team, source) => {
-  if (team) return { text: team.name, isPrediction: false };
+  if (team) return { text: team.name, isPrediction: false, logo: team.logo };
   if (source?.teamA && source?.teamB) {
-    return { text: `${source.teamA.name} o ${source.teamB.name}`, isPrediction: true };
+    return { text: `${source.teamA.name} o ${source.teamB.name}`, isPrediction: true, logo: null };
   }
   return null;
 };
