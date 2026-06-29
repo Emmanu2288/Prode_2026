@@ -95,10 +95,13 @@ export const buildBracket = (matches) => {
 };
 
 // Texto a mostrar para un cupo (teamA o teamB) cuando todavía no hay equipo real:
-// "Ganador: A vs B" si el partido que lo define ya tiene los 2 equipos, o null
-// (mostrar "?") si ese partido en sí todavía depende de otro resultado.
+// "A o B" (predicción, formato corto para que entre en las cajas angostas) si el
+// partido que lo define ya tiene los 2 equipos, o null (mostrar "?") si ese
+// partido en sí todavía depende de otro resultado.
 export const getSlotLabel = (team, source) => {
-  if (team) return team.name;
-  if (source?.teamA && source?.teamB) return `Ganador: ${source.teamA.name} vs ${source.teamB.name}`;
+  if (team) return { text: team.name, isPrediction: false };
+  if (source?.teamA && source?.teamB) {
+    return { text: `${source.teamA.name} o ${source.teamB.name}`, isPrediction: true };
+  }
   return null;
 };

@@ -26,16 +26,16 @@ const MatchupCard = ({ m }) => {
   return (
     <div className="bg-card rounded-xl border border-gray-100 px-4 py-3">
       <div className="flex items-center justify-between gap-2">
-        <span className={`text-sm truncate flex-1 ${m.winner === labelA ? "font-semibold text-gray-800" : "text-gray-400"}`}>
-          {labelA}
+        <span className={`text-sm truncate flex-1 ${labelA.isPrediction ? "italic text-gray-400" : m.winner === labelA.text ? "font-semibold text-gray-800" : "text-gray-400"}`}>
+          {labelA.text}
         </span>
         {isFinished && (
           <span className="text-sm font-bold text-gray-700 flex-shrink-0">{m.fixture.goals.home}</span>
         )}
       </div>
       <div className="flex items-center justify-between gap-2 mt-1">
-        <span className={`text-sm truncate flex-1 ${m.winner === labelB ? "font-semibold text-gray-800" : "text-gray-400"}`}>
-          {labelB}
+        <span className={`text-sm truncate flex-1 ${labelB.isPrediction ? "italic text-gray-400" : m.winner === labelB.text ? "font-semibold text-gray-800" : "text-gray-400"}`}>
+          {labelB.text}
         </span>
         {isFinished && (
           <span className="text-sm font-bold text-gray-700 flex-shrink-0">{m.fixture.goals.away}</span>

@@ -10,6 +10,13 @@ const Y16 = [71, 195, 319, 443];
 const YQF = [133, 381];
 const YSF = 257;
 
+const real = (team) => ({ text: team.name, isPrediction: false });
+
+const fitText = (text, maxWidthPx, fontSizePx) => {
+  const maxChars = Math.max(1, Math.floor(maxWidthPx / (fontSizePx * 0.55)));
+  return text.length > maxChars ? `${text.slice(0, maxChars - 1)}…` : text;
+};
+
 const connector = (xChild, yA, yB, xMid, yParent, xParent) => (
   <>
     <path d={`M${xChild},${yA} H${xMid} V${yParent} H${xParent}`} stroke="var(--border)" strokeWidth="1.5" fill="none" />
@@ -17,10 +24,27 @@ const connector = (xChild, yA, yB, xMid, yParent, xParent) => (
   </>
 );
 
-const MatchBox = ({ x, y, w, side, labelA, labelB, winnerName, score, empty }) => {
-  const h = 46;
+const MatchBoxRow = ({ x, w, y, side, label, isWinner, isLoser, score }) => {
+  const fontSize = label.isPrediction ? 9 : 12.5;
+  const availWidth = score != null ? w - 28 : w - 16;
+  const display = fitText(label.text, availWidth, fontSize);
   const anchor = side === "right" ? "end" : "start";
   const tx = side === "right" ? x + w - 8 : x + 8;
+  const color = isLoser ? "var(--text-muted)" : "var(--text-primary)";
+  const weight = isWinner ? "500" : "400";
+  return (
+    <text x={tx} y={y} textAnchor={anchor} fontSize={fontSize} fontStyle={label.isPrediction ? "italic" : "normal"} fill={color} fontWeight={weight}>
+      {display !== label.text && <title>{label.text}</title>}
+      {display}
+      {score != null && (
+        <tspan x={side === "right" ? x + 8 : x + w - 8} textAnchor={side === "right" ? "start" : "end"} fontStyle="normal">{score}</tspan>
+      )}
+    </text>
+  );
+};
+
+const MatchBox = ({ x, y, w, side, labelA, labelB, winnerName, score, empty }) => {
+  const h = 46;
   if (empty) {
     return (
       <g>
@@ -30,21 +54,11 @@ const MatchBox = ({ x, y, w, side, labelA, labelB, winnerName, score, empty }) =
     );
   }
   return (
-    <g fontSize="12.5">
+    <g>
       <rect x={x} y={y - 23} width={w} height={h} rx="6" fill="var(--bg-card)" stroke="var(--border)" />
       <line x1={x} y1={y} x2={x + w} y2={y} stroke="var(--border)" />
-      <text x={tx} y={y - 7} textAnchor={anchor} fill={winnerName && winnerName !== labelA ? "var(--text-muted)" : "var(--text-primary)"} fontWeight={winnerName === labelA ? "500" : "400"}>
-        {labelA}
-      </text>
-      <text x={tx} y={y + 16} textAnchor={anchor} fill={winnerName && winnerName !== labelB ? "var(--text-muted)" : "var(--text-primary)"} fontWeight={winnerName === labelB ? "500" : "400"}>
-        {labelB}
-      </text>
-      {score && (
-        <>
-          <text x={side === "right" ? x + 8 : x + w - 8} y={y - 7} textAnchor={side === "right" ? "start" : "end"} fill={winnerName === labelA ? "var(--text-primary)" : "var(--text-muted)"} fontWeight={winnerName === labelA ? "500" : "400"}>{score[0]}</text>
-          <text x={side === "right" ? x + 8 : x + w - 8} y={y + 16} textAnchor={side === "right" ? "start" : "end"} fill={winnerName === labelB ? "var(--text-primary)" : "var(--text-muted)"} fontWeight={winnerName === labelB ? "500" : "400"}>{score[1]}</text>
-        </>
-      )}
+      <MatchBoxRow x={x} w={w} y={y - 7} side={side} label={labelA} isWinner={winnerName === labelA.text} isLoser={!!winnerName && winnerName !== labelA.text} score={score ? score[0] : null} />
+      <MatchBoxRow x={x} w={w} y={y + 16} side={side} label={labelB} isWinner={winnerName === labelB.text} isLoser={!!winnerName && winnerName !== labelB.text} score={score ? score[1] : null} />
     </g>
   );
 };
@@ -61,20 +75,20 @@ const renderSide = (rounds, side) => {
   const xQf = isLeft ? X.qfL : X.qfR;
   const xSf = isLeft ? X.sfL : X.sfR;
 
+  const finishedScore = (m) => (m.fixture && ["FT", "AET", "PEN"].includes(m.fixture.fixture.status.short) ? [m.fixture.goals.home, m.fixture.goals.away] : null);
+
   return (
     <g>
       {r32.map((m, i) => (
         <MatchBox key={`r32-${side}-${i}`} x={xR32} y={Y32[i]} w={W.r32} side={side}
-          labelA={m.teamA.name} labelB={m.teamB.name} winnerName={m.winner}
-          score={m.fixture && ["FT", "AET", "PEN"].includes(m.fixture.fixture.status.short) ? [m.fixture.goals.home, m.fixture.goals.away] : null} />
+          labelA={real(m.teamA)} labelB={real(m.teamB)} winnerName={m.winner} score={finishedScore(m)} />
       ))}
       {r16.map((m, i) => {
         const labelA = getSlotLabel(m.teamA, m.leftSource);
         const labelB = getSlotLabel(m.teamB, m.rightSource);
         return labelA && labelB ? (
           <MatchBox key={`r16-${side}-${i}`} x={xR16} y={Y16[i]} w={W.r16} side={side}
-            labelA={labelA} labelB={labelB} winnerName={m.winner}
-            score={m.fixture && ["FT", "AET", "PEN"].includes(m.fixture.fixture.status.short) ? [m.fixture.goals.home, m.fixture.goals.away] : null} />
+            labelA={labelA} labelB={labelB} winnerName={m.winner} score={finishedScore(m)} />
         ) : (
           <MatchBox key={`r16-${side}-${i}`} x={xR16} y={Y16[i]} w={W.r16} side={side} empty />
         );
@@ -84,8 +98,7 @@ const renderSide = (rounds, side) => {
         const labelB = getSlotLabel(m.teamB, m.rightSource);
         return labelA && labelB ? (
           <MatchBox key={`qf-${side}-${i}`} x={xQf} y={YQF[i]} w={W.qf} side={side}
-            labelA={labelA} labelB={labelB} winnerName={m.winner}
-            score={m.fixture && ["FT", "AET", "PEN"].includes(m.fixture.fixture.status.short) ? [m.fixture.goals.home, m.fixture.goals.away] : null} />
+            labelA={labelA} labelB={labelB} winnerName={m.winner} score={finishedScore(m)} />
         ) : (
           <MatchBox key={`qf-${side}-${i}`} x={xQf} y={YQF[i]} w={W.qf} side={side} empty />
         );
@@ -95,8 +108,7 @@ const renderSide = (rounds, side) => {
         const labelB = getSlotLabel(sf.teamB, sf.rightSource);
         return labelA && labelB ? (
           <MatchBox x={xSf} y={YSF} w={W.sf} side={side}
-            labelA={labelA} labelB={labelB} winnerName={sf.winner}
-            score={sf.fixture && ["FT", "AET", "PEN"].includes(sf.fixture.fixture.status.short) ? [sf.fixture.goals.home, sf.fixture.goals.away] : null} />
+            labelA={labelA} labelB={labelB} winnerName={sf.winner} score={finishedScore(sf)} />
         ) : (
           <MatchBox x={xSf} y={YSF} w={W.sf} side={side} empty />
         );
@@ -133,6 +145,8 @@ const BracketDesktop = ({ rounds }) => {
   const finalM = rounds["Final"][0];
   const finalLabelA = getSlotLabel(finalM.teamA, finalM.leftSource);
   const finalLabelB = getSlotLabel(finalM.teamB, finalM.rightSource);
+  const finalScore = finalM.fixture && ["FT", "AET", "PEN"].includes(finalM.fixture.fixture.status.short)
+    ? [finalM.fixture.goals.home, finalM.fixture.goals.away] : null;
 
   return (
     <svg width="100%" viewBox="0 0 1460 520" role="img">
@@ -151,7 +165,7 @@ const BracketDesktop = ({ rounds }) => {
       {renderSide(rounds, "right")}
 
       {finalLabelA && finalLabelB ? (
-        <MatchBox x={X.final} y={YSF} w={W.final} side="left" labelA={finalLabelA} labelB={finalLabelB} winnerName={finalM.winner} />
+        <MatchBox x={X.final} y={YSF} w={W.final} side="left" labelA={finalLabelA} labelB={finalLabelB} winnerName={finalM.winner} score={finalScore} />
       ) : (
         <MatchBox x={X.final} y={YSF} w={W.final} side="left" empty />
       )}
