@@ -62,7 +62,7 @@ const Rules = () => {
             </li>
           </ul>
           <div className="mt-4 bg-gray-50 rounded-xl p-3 text-xs text-gray-500 space-y-1">
-            <p>💡 <b>¿Cómo pronosticar penales?</b> Si pronosticás empate (ej: 1-1), <b>debés elegir</b> quién avanza en penales. Si el marcador ya define un ganador, el equipo que avanza se completa solo — aunque podés cambiarlo.</p>
+            <p>💡 <b>¿Cómo pronosticar penales?</b> Si pronosticás empate (ej: 1-1), <b>debés elegir</b> quién avanza en penales. Si el marcador ya define un ganador, el equipo que avanza queda fijo automáticamente — no se puede elegir lo contrario.</p>
             <p>💡 El marcador que cuenta es el del tiempo reglamentario (90 min). El alargue no cambia el pronóstico de goles.</p>
           </div>
         </div>
