@@ -5,6 +5,18 @@ import Membership from "../models/Membership.js";
 const API_URL = "https://v3.football.api-sports.io";
 const API_KEY = process.env.FOOTBALL_API_KEY;
 
+// El equipo que avanza solo se puede elegir libremente en empate (ahí el
+// marcador no define quién sigue). Si el marcador tiene un ganador, ese
+// equipo es siempre el que avanza — no se puede pronosticar que "avanza
+// el que pierde" el marcador propio.
+const resolveAdvancingTeam = (predictedScore, advancingTeam, fixtureData) => {
+  const [ph, pa] = String(predictedScore ?? "").split("-").map(Number);
+  if (!fixtureData?.teams || Number.isNaN(ph) || Number.isNaN(pa) || ph === pa) {
+    return advancingTeam ?? null;
+  }
+  return ph > pa ? fixtureData.teams.home.name : fixtureData.teams.away.name;
+};
+
 // Crear predicción partido a partido (resultado + MVP)
 export const createPrediction = async (req, res) => {
   try {
@@ -29,6 +41,7 @@ export const createPrediction = async (req, res) => {
     // Consultar estado del partido en la API para validar y obtener el matchId externo
     let externalMatchId = String(match);
     let statusBlocked = false;
+    let fixtureData = null;
 
     try {
       const response = await axios.get(`${API_URL}/fixtures`, {
@@ -37,7 +50,7 @@ export const createPrediction = async (req, res) => {
         timeout: 5000
       });
 
-      const fixtureData = response.data?.response?.[0];
+      fixtureData = response.data?.response?.[0];
       if (fixtureData) {
         externalMatchId = String(fixtureData?.fixture?.id ?? match);
         const status = fixtureData?.fixture?.status?.short;
@@ -55,6 +68,8 @@ export const createPrediction = async (req, res) => {
       return res.status(400).json({ error: "El partido ya comenzó, no se puede modificar la apuesta." });
     }
 
+    const normalizedAdvancingTeam = resolveAdvancingTeam(predictedScore, advancingTeam, fixtureData);
+
     // Buscar predicción existente
     const existing = await Prediction.findOne({ user: userId, matchId: externalMatchId });
 
@@ -62,7 +77,7 @@ export const createPrediction = async (req, res) => {
       // Ya existe → actualizar
       existing.predictedScore = predictedScore;
       if (mvpPlayer !== undefined) existing.mvpPlayer = mvpPlayer;
-      if (advancingTeam !== undefined) existing.advancingTeam = advancingTeam ?? null;
+      if (advancingTeam !== undefined) existing.advancingTeam = normalizedAdvancingTeam;
       await existing.save();
       return res.status(200).json(existing);
     }
@@ -73,7 +88,7 @@ export const createPrediction = async (req, res) => {
       matchId: externalMatchId,
       predictedScore,
       mvpPlayer,
-      advancingTeam: advancingTeam ?? null,
+      advancingTeam: normalizedAdvancingTeam,
     });
 
     return res.status(201).json(prediction);
@@ -101,13 +116,14 @@ export const updatePrediction = async (req, res) => {
     }
 
     // Verificar estado del partido
+    let fixtureData = null;
     try {
       const response = await axios.get(`${API_URL}/fixtures`, {
         params: { id: matchId },
         headers: { "x-apisports-key": API_KEY },
         timeout: 5000
       });
-      const fixtureData = response.data?.response?.[0];
+      fixtureData = response.data?.response?.[0];
       if (fixtureData) {
         const status = fixtureData?.fixture?.status?.short;
         if (status && status !== "NS") {
@@ -120,7 +136,7 @@ export const updatePrediction = async (req, res) => {
 
     const updateFields = { predictedScore };
     if (mvpPlayer !== undefined) updateFields.mvpPlayer = mvpPlayer;
-    if (advancingTeam !== undefined) updateFields.advancingTeam = advancingTeam ?? null;
+    if (advancingTeam !== undefined) updateFields.advancingTeam = resolveAdvancingTeam(predictedScore, advancingTeam, fixtureData);
 
     const prediction = await Prediction.findOneAndUpdate(
       { user: userId, matchId: String(matchId) },

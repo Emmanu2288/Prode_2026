@@ -52,10 +52,12 @@ const NewPrediction = () => {
   const KNOCKOUT_ROUNDS = new Set(["Round of 32", "Round of 16", "Quarter-finals", "Semi-finals", "3rd Place Final", "Final"]);
   const isKnockout = KNOCKOUT_ROUNDS.has(league?.round);
 
-  // Equipo que avanza: derivado automáticamente del marcador (si no hay empate)
+  // Equipo que avanza: si no hay empate, es siempre el ganador del marcador
+  // (no se puede elegir lo contrario). Solo en empate el usuario elige manualmente,
+  // porque ahí el marcador no alcanza para saber quién sigue.
   const isDraw = homeGoals === awayGoals;
   const autoAdvancingTeam = homeGoals > awayGoals ? teams?.home?.name : homeGoals < awayGoals ? teams?.away?.name : null;
-  const effectiveAdvancingTeam = advancingTeam ?? autoAdvancingTeam;
+  const effectiveAdvancingTeam = isDraw ? (advancingTeam ?? autoAdvancingTeam) : autoAdvancingTeam;
 
   // Determina si el partido ya empezó (por status o por horario de kickoff)
   const isMatchStarted = () =>
@@ -291,9 +293,13 @@ const NewPrediction = () => {
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
                   🏆 ¿Quién avanza?{isDraw && <span className="text-red-500 ml-1">*</span>}
                 </p>
-                {isDraw && (
+                {isDraw ? (
                   <p className="text-xs text-yellow-600 mb-2">
                     Empate → elegí quién avanza en penales
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-400 mb-2">
+                    Se completa solo con el ganador del marcador
                   </p>
                 )}
                 <div className="grid grid-cols-2 gap-2">
@@ -302,23 +308,22 @@ const NewPrediction = () => {
                     { side: "away", name: teams.away.name, logo: teams.away.logo },
                   ].map(({ side, name, logo }) => {
                     const isSelected = effectiveAdvancingTeam === name;
-                    const isAutoSelected = !advancingTeam && autoAdvancingTeam === name;
                     return (
                       <button
                         key={side}
                         type="button"
+                        disabled={!isDraw}
                         onClick={() => setAdvancingTeam(advancingTeam === name ? null : name)}
                         className={`flex items-center gap-2 border rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
                           isSelected
                             ? "border-green-500 bg-green-50 text-green-700"
-                            : "border-gray-200 hover:border-green-300 text-gray-600"
+                            : isDraw
+                            ? "border-gray-200 hover:border-green-300 text-gray-600"
+                            : "border-gray-100 text-gray-400 cursor-default opacity-60"
                         }`}
                       >
                         <img src={logo} alt="" className="w-6 h-6 object-contain" />
                         <span className="truncate flex-1 text-left">{name}</span>
-                        {isAutoSelected && (
-                          <span className="text-[10px] text-green-500 font-normal">auto</span>
-                        )}
                       </button>
                     );
                   })}
