@@ -177,7 +177,11 @@ const GroupTable = ({ group, teams }) => (
               <td className="px-2 py-2 text-center font-bold text-gray-800">{t.points ?? 0}</td>
               <td className="px-3 py-2">
                 <div className="flex gap-0.5 justify-center">
-                  {(t.form || "").split("").map((r, i) => (
+                  {/* La API ordena el form de más reciente a más antiguo y sigue
+                      agregando resultados de fase eliminatoria — esta tabla es de
+                      fase de grupos (ya cerrada), así que se recorta a los últimos
+                      "played" resultados para no mostrar partidos de dieciseisavos+ */}
+                  {(t.form || "").slice(-(t.all?.played ?? 0)).split("").map((r, i) => (
                     <span key={i} className={`w-4 h-4 rounded-full text-xs font-bold flex items-center justify-center ${formBadgeColor(r)}`}>
                       {r}
                     </span>
@@ -241,7 +245,7 @@ const BestThirdsTable = ({ teams }) => {
                 <td className="px-2 py-2 text-center font-bold text-gray-800">{t.points ?? 0}</td>
                 <td className="px-3 py-2">
                   <div className="flex gap-0.5 justify-center">
-                    {(t.form || "").split("").map((r, idx) => (
+                    {(t.form || "").slice(-(t.all?.played ?? 0)).split("").map((r, idx) => (
                       <span key={idx} className={`w-4 h-4 rounded-full text-xs font-bold flex items-center justify-center ${formBadgeColor(r)}`}>
                         {r}
                       </span>

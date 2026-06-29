@@ -3,12 +3,16 @@ import useMatches from "../hooks/useMatches";
 import useLiveMatches from "../hooks/useLiveMatches";
 import MatchCard from "../components/fixtures/MatchCard";
 import RoundFilter from "../components/fixtures/RoundFilter";
+import BracketDesktop from "../components/fixtures/BracketDesktop";
+import BracketMobile from "../components/fixtures/BracketMobile";
 import { formatRound } from "../utils/roundUtils";
+import { buildBracket } from "../utils/bracketUtils";
 import BallIcon from "../components/BallIcon";
 
 const Fixtures = () => {
   const { matches: initialMatches, rounds, nextRound, loading, error } = useMatches();
   const liveMatches = useLiveMatches(initialMatches);
+  const [tab, setTab] = useState("partidos");
 
   // Reagrupar con datos live
   const groupedByRound = rounds.reduce((acc, round) => {
@@ -68,38 +72,76 @@ const Fixtures = () => {
         </div>
       </div>
 
-      {/* Filtro por fecha/round */}
-      <RoundFilter
-        rounds={rounds}
-        selected={selectedRound}
-        onChange={setSelectedRound}
-      />
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-gray-200">
+        {[{ key: "partidos", label: "⚽ Partidos" }, { key: "cuadro", label: "🏆 Cuadro" }].map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              tab === t.key
+                ? "border-green-600 text-green-700"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-      {/* Título del round seleccionado */}
-      {selectedRound && (
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-600">
-            {formatRound(selectedRound)}
-          </h2>
-          <span className="text-xs text-gray-400">
-            {currentMatches.length} partido{currentMatches.length !== 1 ? "s" : ""}
-          </span>
-        </div>
+      {tab === "partidos" && (
+        <>
+          {/* Filtro por fecha/round */}
+          <RoundFilter
+            rounds={rounds}
+            selected={selectedRound}
+            onChange={setSelectedRound}
+          />
+
+          {/* Título del round seleccionado */}
+          {selectedRound && (
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-600">
+                {formatRound(selectedRound)}
+              </h2>
+              <span className="text-xs text-gray-400">
+                {currentMatches.length} partido{currentMatches.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+          )}
+
+          {/* Grilla de partidos */}
+          {currentMatches.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {currentMatches.map((match) => (
+                <MatchCard key={match.fixture.id} match={match} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-400">
+              <span className="text-4xl">📅</span>
+              <p className="mt-2 text-sm">No hay partidos en esta fecha</p>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Grilla de partidos */}
-      {currentMatches.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {currentMatches.map((match) => (
-            <MatchCard key={match.fixture.id} match={match} />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-12 text-gray-400">
-          <span className="text-4xl">📅</span>
-          <p className="mt-2 text-sm">No hay partidos en esta fecha</p>
-        </div>
-      )}
+      {tab === "cuadro" && (() => {
+        const bracketRounds = buildBracket(liveMatches);
+        return (
+          <div>
+            <p className="text-xs text-gray-400 mb-3">
+              Cuadro oficial de eliminación directa. Las rondas sin equipos confirmados todavía se completan solas a medida que se juegan los partidos.
+            </p>
+            <div className="hidden md:block overflow-x-auto">
+              <BracketDesktop rounds={bracketRounds} />
+            </div>
+            <div className="md:hidden">
+              <BracketMobile rounds={bracketRounds} />
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
