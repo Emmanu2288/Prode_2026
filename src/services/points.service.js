@@ -14,9 +14,17 @@ import User from "../models/User.js";
  * prediction.mvp optional: player id/string
  * finalMvp optional: player id/string
  */
+
+// A partir de Francia-Suecia (primer PEN tras el cambio de reglas) el resultado
+// exacto en penales vale más que solo acertar quién avanza, igual que ya pasa
+// en los partidos sin penales (exacto 3 > ganador 1). Antes de este corte
+// (ej. Países Bajos-Marruecos) ambos criterios valían lo mismo — se deja así
+// para no recalcular puntos ya otorgados.
+const PEN_V2_CUTOFF = new Date("2026-06-30T21:00:00Z");
+
 export const calculatePointsFinal = (prediction, finalGoals, finalMvp, options = {}) => {
   try {
-    const { statusShort = null, winnerTeam = null } = options;
+    const { statusShort = null, winnerTeam = null, matchDate = null } = options;
     const [ph, pa] = String(prediction.predictedScore || "0-0").split("-").map(Number);
     const fh = Number(finalGoals.home ?? finalGoals.homeTeam ?? finalGoals.home);
     const fa = Number(finalGoals.away ?? finalGoals.awayTeam ?? finalGoals.away);
@@ -35,8 +43,15 @@ export const calculatePointsFinal = (prediction, finalGoals, finalMvp, options =
         const w = norm(winnerTeam);
         correctWinner = w.includes(p) || p.includes(w);
       }
-      if (correctScore && correctWinner) points = 3;
-      else if (correctScore || correctWinner) points = 1;
+      const isV2 = matchDate ? new Date(matchDate) >= PEN_V2_CUTOFF : true;
+      if (isV2) {
+        if (correctScore && correctWinner) points = 3;
+        else if (correctScore) points = 2;
+        else if (correctWinner) points = 1;
+      } else {
+        if (correctScore && correctWinner) points = 3;
+        else if (correctScore || correctWinner) points = 1;
+      }
     } else {
       // FT / AET: score determines winner
       if (ph === fh && pa === fa) {

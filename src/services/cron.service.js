@@ -78,6 +78,7 @@ export const reconcileMatch = async (fixture) => {
     : fixture.teams?.away?.winner
     ? fixture.teams.away.name
     : null;
+  const matchDate = fixture.fixture?.date ?? fixture.date ?? null;
   const finalMvp = fixture.mvp ?? await getFixtureMvp(matchId);
 
   // Asignar predicción 0-0 a cada usuario que no pronosticó este partido
@@ -107,7 +108,7 @@ export const reconcileMatch = async (fixture) => {
     const batch = preds.slice(i, i + MAX_PARALLEL_USERS);
     await Promise.all(batch.map(async (pred) => {
       try {
-        const expectedPoints = calculatePointsFinal(pred, finalGoals, finalMvp, { statusShort, winnerTeam });
+        const expectedPoints = calculatePointsFinal(pred, finalGoals, finalMvp, { statusShort, winnerTeam, matchDate });
         const currentPoints = Number(pred.points ?? 0);
         if (currentPoints === expectedPoints) return;
 

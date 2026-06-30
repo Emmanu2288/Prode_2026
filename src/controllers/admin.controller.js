@@ -272,6 +272,7 @@ export const setManualMvp = async (req, res) => {
     let finalGoals = { home: 0, away: 0 };
     let statusShort = null;
     let winnerTeam = null;
+    let matchDate = null;
     try {
       const r = await axios.get(`${API_URL}/fixtures`, {
         params: { id: fixtureId },
@@ -282,6 +283,7 @@ export const setManualMvp = async (req, res) => {
         finalGoals = f.goals;
         statusShort = f.fixture?.status?.short ?? null;
         winnerTeam = f.teams?.home?.winner ? f.teams.home.name : f.teams?.away?.winner ? f.teams.away.name : null;
+        matchDate = f.fixture?.date ?? null;
       }
     } catch (e) { console.warn(e.message); }
 
@@ -311,7 +313,7 @@ export const setManualMvp = async (req, res) => {
 
     let updated = 0;
     for (const pred of preds) {
-      const points = calculatePointsFinal(pred, finalGoals, mvpName, { statusShort, winnerTeam });
+      const points = calculatePointsFinal(pred, finalGoals, mvpName, { statusShort, winnerTeam, matchDate });
       await applyFinalPointsToPrediction(pred, points);
       updated++;
     }

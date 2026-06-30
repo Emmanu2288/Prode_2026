@@ -6,6 +6,10 @@ import BallIcon from "../components/BallIcon";
 
 const FINISHED = new Set(["FT", "AET", "PEN"]);
 
+// Mismo corte que en points.service.js: desde Francia-Suecia, el resultado
+// exacto en penales vale más que solo acertar quién avanza.
+const PEN_V2_CUTOFF = new Date("2026-06-30T21:00:00Z");
+
 const normalizeName = (s) =>
   String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 
@@ -32,7 +36,10 @@ const getScoreBreakdown = (pred, matchData) => {
       const a = normalizeName(actualWinner);
       correctWinner = a.includes(p) || p.includes(a);
     }
+    const matchDate = matchData.fixture?.date ? new Date(matchData.fixture.date) : null;
+    const isV2 = matchDate ? matchDate >= PEN_V2_CUTOFF : true;
     if (correctScore && correctWinner) { base = 3; isExact = true; }
+    else if (isV2 && correctScore) base = 2;
     else if (correctScore || correctWinner) base = 1;
     penDetails = { correctScore, correctWinner };
   } else {
@@ -69,7 +76,7 @@ const statusLabel = (pred, matchData) => {
   const parts = [];
   if (status === "PEN" && penDetails) {
     if (isExact) parts.push("Exacto +3");
-    else if (penDetails.correctScore) parts.push("Score +1");
+    else if (penDetails.correctScore) parts.push(`Score +${base}`);
     else if (penDetails.correctWinner) parts.push("Avance +1");
   } else {
     if (isExact) parts.push("Exacto +3");
