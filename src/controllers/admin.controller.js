@@ -238,7 +238,7 @@ export const processTournamentAwards = async (req, res) => {
 export const getFinishedMatches = async (req, res) => {
   try {
     const r = await axios.get(`${API_URL}/fixtures`, {
-      params: { league: 1, season: SEASON, status: "FT" },
+      params: { league: 1, season: SEASON, status: "FT-AET-PEN" },
       headers: { "x-apisports-key": API_KEY },
       timeout: 8000,
     });
@@ -267,20 +267,27 @@ export const setManualMvp = async (req, res) => {
 
     if (!mvpName) return res.status(400).json({ error: "mvpName requerido" });
 
-    // Obtener resultado final del partido
+    // Siempre se consulta el fixture real para conocer el status (FT/AET/PEN) y el
+    // ganador — necesarios para puntuar correctamente partidos que fueron a penales.
     let finalGoals = { home: 0, away: 0 };
+    let statusShort = null;
+    let winnerTeam = null;
+    try {
+      const r = await axios.get(`${API_URL}/fixtures`, {
+        params: { id: fixtureId },
+        headers: { "x-apisports-key": API_KEY }, timeout: 8000,
+      });
+      const f = r.data?.response?.[0];
+      if (f) {
+        finalGoals = f.goals;
+        statusShort = f.fixture?.status?.short ?? null;
+        winnerTeam = f.teams?.home?.winner ? f.teams.home.name : f.teams?.away?.winner ? f.teams.away.name : null;
+      }
+    } catch (e) { console.warn(e.message); }
+
     if (finalScore) {
       const [h, a] = finalScore.split("-").map(Number);
       finalGoals = { home: h, away: a };
-    } else {
-      try {
-        const r = await axios.get(`${API_URL}/fixtures`, {
-          params: { id: fixtureId },
-          headers: { "x-apisports-key": API_KEY }, timeout: 8000,
-        });
-        const f = r.data?.response?.[0];
-        if (f) finalGoals = f.goals;
-      } catch (e) { console.warn(e.message); }
     }
 
     // Asignar predicción 0-0 a cada usuario que no pronosticó este partido
@@ -304,7 +311,7 @@ export const setManualMvp = async (req, res) => {
 
     let updated = 0;
     for (const pred of preds) {
-      const points = calculatePointsFinal(pred, finalGoals, mvpName);
+      const points = calculatePointsFinal(pred, finalGoals, mvpName, { statusShort, winnerTeam });
       await applyFinalPointsToPrediction(pred, points);
       updated++;
     }

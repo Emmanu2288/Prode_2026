@@ -5,7 +5,7 @@ import Membership from "../models/Membership.js";
 import GroupPoints from "../models/GroupPoints.js";
 import ProcessedFixture from "../models/ProcessedFixture.js";
 import Correction from "../models/Correction.js";
-import { getWorldCup2026Matches } from "./match.service.js";
+import { getWorldCup2026Matches, getFixtureMvp } from "./match.service.js";
 import { calculatePointsFinal } from "./points.service.js";
 import { captureException, slackAlert } from "../utils/alerts.js";
 import { sendPushToAll } from "./push.service.js";
@@ -72,7 +72,13 @@ const applyCorrection = async ({ matchId, predId, userId, before, after, diff, r
 export const reconcileMatch = async (fixture) => {
   const matchId = String(fixture.fixture?.id ?? fixture.id);
   const finalGoals = fixture.goals ?? fixture.score ?? { home: 0, away: 0 };
-  const finalMvp = fixture.mvp ?? null;
+  const statusShort = fixture.fixture?.status?.short ?? fixture.status?.short ?? null;
+  const winnerTeam = fixture.teams?.home?.winner
+    ? fixture.teams.home.name
+    : fixture.teams?.away?.winner
+    ? fixture.teams.away.name
+    : null;
+  const finalMvp = fixture.mvp ?? await getFixtureMvp(matchId);
 
   // Asignar predicción 0-0 a cada usuario que no pronosticó este partido
   const allUserIds = await User.distinct("_id");
@@ -101,7 +107,7 @@ export const reconcileMatch = async (fixture) => {
     const batch = preds.slice(i, i + MAX_PARALLEL_USERS);
     await Promise.all(batch.map(async (pred) => {
       try {
-        const expectedPoints = calculatePointsFinal(pred, finalGoals, finalMvp);
+        const expectedPoints = calculatePointsFinal(pred, finalGoals, finalMvp, { statusShort, winnerTeam });
         const currentPoints = Number(pred.points ?? 0);
         if (currentPoints === expectedPoints) return;
 
@@ -134,7 +140,7 @@ export const reconcileMatch = async (fixture) => {
   }
 
   try {
-    await ProcessedFixture.create({ matchId, type: "scored" });
+    await ProcessedFixture.create({ matchId, type: "scored", mvp: finalMvp });
   } catch (e) {}
 
   if (corrections > CORRECTION_ALERT_THRESHOLD) {
@@ -148,13 +154,17 @@ export const reconcileMatch = async (fixture) => {
 
 export const scheduleFinalizeMatchesReconciler = () => {
   cron.schedule("*/5 * * * *", async () => {
-    console.log("⏰ Cron reconciler: buscando partidos FT para reconciliar...");
+    console.log("⏰ Cron reconciler: buscando partidos finalizados (FT/AET/PEN) para reconciliar...");
 
     try {
       const from = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       const to = new Date().toISOString().slice(0, 10);
 
-      const fixtures = await getWorldCup2026Matches({ params: { status: "FT", from, to } });
+      // FT-AET-PEN: partidos terminados en tiempo reglamentario, alargue o penales —
+      // antes solo se buscaba "FT", dejando sin reconciliar (red de seguridad) los
+      // partidos de fase eliminatoria que terminan en alargue o penales si el
+      // webhook en vivo no llegaba a procesarlos.
+      const fixtures = await getWorldCup2026Matches({ params: { status: "FT-AET-PEN", from, to } });
       const list = Array.isArray(fixtures) ? fixtures : [];
 
       if (!list.length) return;
